@@ -46,6 +46,8 @@ uint8_t page = 0;
 bool forceRedraw = true;
 bool infoShown = false;
 bool infoArmed = false;    // the info screen only closes after the opening press was released
+bool wifiWanted = false;   // runtime Wi-Fi state (starts from settings.wifiAtBoot, default off); the knob toggles it
+bool bootForceWifi = false;   // knob held at power-up: start Wi-Fi this session regardless of the setting
 uint32_t encPressSince = 0;   // info screen: debounce for the knob push that toggles Wi-Fi
 bool encToggled = false;
 uint32_t lastInfoPoll = 0;
@@ -167,7 +169,7 @@ void setup() {
     core::Settings defaults;
     app::cfg.settings.apSsid = defaults.apSsid;
     app::cfg.settings.apPass = defaults.apPass;
-    app::cfg.settings.wifiEnabled = true;   // also the way back if Wi-Fi was switched off
+    bootForceWifi = true;   // also starts Wi-Fi for this session
     storage::save(app::cfg);
     screens::message(0, "Wi-Fi reset", "Release the", "encoder button");
     delay(1500);
@@ -177,7 +179,8 @@ void setup() {
 
   actions::begin();
   ledstrip::begin();
-  net::begin();
+  wifiWanted = app::cfg.settings.wifiAtBoot || bootForceWifi;
+  net::begin(wifiWanted);
 
   lastInput = millis();
 }
@@ -265,15 +268,13 @@ void loop() {
           if (!encPressSince) encPressSince = now ? now : 1;
           if (!encToggled && now - encPressSince >= 40) {
             encToggled = true;
-            app::cfg.settings.wifiEnabled = !app::cfg.settings.wifiEnabled;
-            net::requestWifi(app::cfg.settings.wifiEnabled);
-            savePending = true;
-            saveAt = now;
+            wifiWanted = !wifiWanted;
+            net::requestWifi(wifiWanted);
             showInfo = true;
             lastClients = -1;
             ssid = app::cfg.settings.apSsid;
             pass = app::cfg.settings.apPass;
-            wifiFlag = app::cfg.settings.wifiEnabled;
+            wifiFlag = wifiWanted;
           }
         } else {
           encPressSince = 0;
@@ -299,7 +300,7 @@ void loop() {
         lastClients = -1;
         ssid = app::cfg.settings.apSsid;
         pass = app::cfg.settings.apPass;
-        wifiFlag = app::cfg.settings.wifiEnabled;
+        wifiFlag = wifiWanted;
       }
     }
 
@@ -348,7 +349,7 @@ void loop() {
     int c = net::clientCount();
     if (lastClients >= 0 && c != lastClients) {
       app::Lock l(app::cfgMtx);
-      drawWifiInfo(app::cfg.settings.apSsid, app::cfg.settings.apPass, app::cfg.settings.wifiEnabled, c);
+      drawWifiInfo(app::cfg.settings.apSsid, app::cfg.settings.apPass, wifiWanted, c);
     }
     lastClients = c;
   }

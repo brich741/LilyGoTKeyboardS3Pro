@@ -123,7 +123,7 @@ function validateConfig(c) {
   if (!int(s.holdMs, 150, 3000)) err('Hold threshold must be 150-3000 ms');
   if (!int(s.revertMs, 100, 30000)) err('Revert time must be 100-30000 ms');
   if (s.ledHue !== undefined && typeof s.ledHue !== 'boolean') err('ledHue must be true or false');
-  if (s.wifiEnabled !== undefined && typeof s.wifiEnabled !== 'boolean') err('wifiEnabled must be true or false');
+  if (s.wifiAtBoot !== undefined && typeof s.wifiAtBoot !== 'boolean') err('wifiAtBoot must be true or false');
   if (!Array.isArray(s.ledZones) || s.ledZones.length !== 4 || s.ledZones.some(m => !int(m, 0, 16383))) err('LED zones must be 4 masks (0-16383)');
   if (!Array.isArray(c.pages) || c.pages.length < 1 || c.pages.length > 8) { err('Need 1-8 pages'); return errs; }
   if (!int(s.activePage, 0, Math.min(7, c.pages.length - 1))) err('Active page out of range');
@@ -246,7 +246,7 @@ function mockSeedConfig() {
   return {
     version: 1,
     settings: { apSsid: 'ClaudePad', apPass: 'claudepad1', brightness: 80, ledBrightness: 40, dimMinutes: 10,
-      doubleMs: 250, holdMs: 400, revertMs: 1500, activePage: 0, ledHue: true, wifiEnabled: true, ledZones: DEFAULT_ZONES.slice() },
+      doubleMs: 250, holdMs: 400, revertMs: 1500, activePage: 0, ledHue: true, wifiAtBoot: false, ledZones: DEFAULT_ZONES.slice() },
     icons: BUILTIN_ICONS.map(b => ({ id: b.id, name: b.name })),
     pages: [
       {
@@ -398,6 +398,7 @@ function blankPage(n) {
 function normalizeConfig(c) {
   c.icons = c.icons || [];
   c.settings = c.settings || {};
+  if (typeof c.settings.wifiAtBoot !== 'boolean') c.settings.wifiAtBoot = false;
   if (typeof c.settings.ledHue !== 'boolean') c.settings.ledHue = true;
   if (!Array.isArray(c.settings.ledZones) || c.settings.ledZones.length !== 4) c.settings.ledZones = DEFAULT_ZONES.slice();
   for (const p of c.pages) {
@@ -879,7 +880,9 @@ function viewSettings() {
       h('div', { class: 'notice', text: 'Changing the name or password disconnects your phone when you save. Reconnect to the new network afterwards.' }),
       textField('Wi-Fi name (1-31)', s.apSsid, v => { s.apSsid = v; }, { max: 31 }),
       pw, h('label', { class: 'check' }, show, 'Show password'),
-      h('p', { class: 'hint', text: 'Wi-Fi can be turned off/on from the pad: hold the knob for 3 seconds to see the network name, password and address, then push the knob to switch Wi-Fi.' })),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!s.wifiAtBoot, 'aria-describedby': 'wifiBootHelp',
+        onChange: e => { s.wifiAtBoot = e.target.checked; markDirty(); } }), 'Start Wi-Fi when the pad powers on'),
+      h('div', { class: 'hint', id: 'wifiBootHelp', text: 'Off by default. To use the phone UI: hold the knob for 3 seconds (the screens show the network name, password and address), then push the knob to switch Wi-Fi on.' })),
     h('section', { class: 'card' },
       h('h3', { text: 'Display' }),
       numField('Screen brightness (5-100 %)', s.brightness, 5, 100, v => { s.brightness = v; }),

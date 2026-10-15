@@ -77,14 +77,13 @@ void handlePutConfig() {
   std::string err;
   if (!core::parseConfig(doc.as<JsonVariantConst>(), next, err)) return sendError(400, err.c_str());
 
-  bool apChanged, wifiChanged;
+  bool apChanged;
   uint32_t seq;
   core::Config toSave;
   {
     app::Lock l(app::cfgMtx);
     apChanged = next.settings.apSsid != app::cfg.settings.apSsid ||
                 next.settings.apPass != app::cfg.settings.apPass;
-    wifiChanged = next.settings.wifiEnabled != app::cfg.settings.wifiEnabled;
     app::cfg = next;
     app::generation = app::generation + 1;
     toSave = app::cfg;
@@ -92,7 +91,6 @@ void handlePutConfig() {
   }
   if (!storage::save(toSave, seq)) return sendError(500, "failed to write config");
   sendOk();
-  if (wifiChanged) requestWifi(next.settings.wifiEnabled);
   if (apChanged) app::restartApRequested = true;
 }
 
@@ -317,7 +315,7 @@ String debugInfo() {
   return s;
 }
 
-void begin() {
+void begin(bool startWifi) {
   uploadBuf = (uint8_t*)malloc(storage::kIconBytes);
 
   server.on("/", HTTP_GET, handleIndex);
@@ -344,10 +342,7 @@ void begin() {
   server.serveStatic("/", LittleFS, "/www/", "max-age=300");
   server.onNotFound(handleNotFound);
 
-  {   // honour the persisted on/off choice; the web task applies it
-    app::Lock l(app::cfgMtx);
-    wifiCmd = app::cfg.settings.wifiEnabled ? 1 : 0;
-  }
+  wifiCmd = startWifi ? 1 : 0;   // the web task applies it
   xTaskCreatePinnedToCore(serverTask, "web", 8192, nullptr, 1, nullptr, 0);
 }
 

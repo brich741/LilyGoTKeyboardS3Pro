@@ -28,7 +28,7 @@ and again whenever you change `firmware/data/www`.
 
 ## Use
 
-1. Plug the pad into your PC. Join Wi-Fi **ClaudePad** (password `claudepad1`; change it in Settings).
+1. Plug the pad into your PC and switch its Wi-Fi on (hold the knob 3 s, then push it). Join Wi-Fi **ClaudePad** (password `claudepad1`; change it in Settings).
 2. Open `http://192.168.4.1` (a captive portal normally opens it for you).
 3. Tap **Generate starter icons**, then **Save**. Use **LED calibration** once so key colors light the right LEDs.
 4. Edit keys: tap a key, pick a gesture, add steps, **Test** sends them to the PC, **Save** applies live.
@@ -38,12 +38,13 @@ The starter "Claude Code" page holds **Ctrl+D** while key 1 is held (the VS Code
 (`voice:pushToTalk` -> `ctrl+d`) for the CLI; confirm what the VS Code extension uses and change the key in the UI if needed.
 
 ### Wi-Fi on the pad
-Hold the **knob for 3 seconds**: the four screens show Wi-Fi ON/OFF, the **network name**, the **password**, the **address** (`http://192.168.4.1`)
-and how many devices are connected. **Push the knob** to switch Wi-Fi off/on (the choice is remembered across power cycles); press any key or turn
-the knob to close the screen.
+**Wi-Fi is off when the pad powers up.** Hold the **knob for 3 seconds**: the four screens show Wi-Fi ON/OFF, the **network name**, the
+**password**, the **address** (`http://192.168.4.1`) and how many devices are connected. **Push the knob** to switch Wi-Fi on (or off again);
+press any key or turn the knob to close the screen. The choice lasts until the next power-up. To have Wi-Fi start at power-up, tick
+*Start Wi-Fi when the pad powers on* in the web UI settings.
 
 ### Recovery
-- Forgot the Wi-Fi password or switched Wi-Fi off: hold the knob while plugging in USB (resets SSID/password to defaults and turns Wi-Fi on), or hold it 3 s any time to see them and switch Wi-Fi.
+- Forgot the Wi-Fi password or switched Wi-Fi off: hold the knob while plugging in USB (resets SSID/password to defaults and starts Wi-Fi for that session), or hold it 3 s any time to see them and switch Wi-Fi.
 - Factory reset is in the web UI under Backup.
 
 ## LED colours: needs the STM32 firmware update (hardware)

@@ -17,7 +17,7 @@ Single source of truth shared by the firmware (`firmware/lib/core`) and the web 
     "holdMs": 400,                  // hold threshold
     "revertMs": 1500,               // default after-hold / flash duration
     "activePage": 0,
-    "wifiEnabled": true,            // Wi-Fi AP on/off; toggled on the pad (hold knob 3 s, then push). UI keeps it as-is, no toggle
+    "wifiAtBoot": false,            // start the access point at power-up (default false); the knob (hold 3 s, push) toggles Wi-Fi for the session only
     "ledHue": true,                 // default true = real LED hues (needs LilyGo's fixed STM32 firmware); false = controller ignores hue, white/pink only
     "ledZones": [3, 24, 192, 1536]  // 14-bit LED masks above keys 1..4 (bit0 = LED1); default = LED pairs 1-2, 4-5, 7-8, 10-11
   },

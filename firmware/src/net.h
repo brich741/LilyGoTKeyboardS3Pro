@@ -4,7 +4,7 @@
 // Wi-Fi access point, captive portal and the REST API described in docs/CONFIG.md.
 namespace net {
 
-void begin();            // start AP + web server task (config must be loaded)
+void begin(bool startWifi);   // start the web task; the access point starts now only if startWifi
 void restartAp();        // re-apply SSID/password from the current config
 String ipString();
 void requestWifi(bool on);   // switch the access point on/off (applied by the web task)
