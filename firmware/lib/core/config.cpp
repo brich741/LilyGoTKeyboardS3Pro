@@ -296,7 +296,7 @@ bool parseConfig(JsonVariantConst src, Config& out, std::string& err) {
     st.holdMs = (uint16_t)getInt(s, "holdMs", st.holdMs, 150, 3000);
     st.revertMs = (uint16_t)getInt(s, "revertMs", st.revertMs, 100, 30000);
     st.activePage = (uint8_t)getInt(s, "activePage", 0, 0, kMaxPages - 1);
-    st.ledHue = s["ledHue"].is<bool>() ? s["ledHue"].as<bool>() : false;
+    if (s["ledHue"].is<bool>()) st.ledHue = s["ledHue"].as<bool>();   // absent: keep default
     JsonVariantConst z = s["ledZones"];
     if (z.is<JsonArrayConst>()) {
       int i = 0;
@@ -460,53 +460,52 @@ Config defaultConfig() {
 
   PageCfg claude;
   claude.name = "Claude Code";
-  claude.led = {Effect::Breathe, 0xFFFFFF, 30};
+  claude.led = {Effect::Breathe, 0x3355FF, 30};
 
   // Key 1: hold = push-to-talk (VS Code extension shows Ctrl+D; CLI: bind voice:pushToTalk).
   KeyCfg& mic = claude.keys[0];
-  mic.idle = vis("mic-red", 0);
-  mic.idle.hasColor = false;
+  mic.idle = vis("mic-red", 0xFF0000);
   mic.hold.present = true;
   mic.hold.start = {keyDown(MOD_CTRL, "d")};
-  mic.hold.vis = vis("mic-green", 0xFF00FF);
+  mic.hold.vis = vis("mic-green", 0x00FF00);
 
   KeyCfg& clear = claude.keys[1];
   clear.idle = vis("clear", 0);
   clear.idle.hasColor = false;
-  clear.single = gesture({text("/clear\n")}, vis("", 0xFF00FF));
-  clear.dbl = gesture({text("/compact\n")}, vis("", 0xFF00FF));
+  clear.single = gesture({text("/clear\n")}, vis("", 0xFFAA00));
+  clear.dbl = gesture({text("/compact\n")}, vis("", 0xFFAA00));
 
   KeyCfg& esc = claude.keys[2];
   esc.idle = vis("esc", 0);
   esc.idle.hasColor = false;
-  esc.single = gesture({keyTap(0, "esc")}, vis("", 0xFF00FF));
-  esc.dbl = gesture({keyTap(0, "esc"), delay(80), keyTap(0, "esc")}, vis("", 0xFF00FF));
+  esc.single = gesture({keyTap(0, "esc")}, vis("", 0xFF3333));
+  esc.dbl = gesture({keyTap(0, "esc"), delay(80), keyTap(0, "esc")}, vis("", 0xFF3333));
 
   KeyCfg& rc = claude.keys[3];
   rc.idle = vis("remote", 0);
   rc.idle.hasColor = false;
-  rc.single = gesture({text("/rc\n")}, vis("", 0xFF00FF));
-  rc.dbl = gesture({text("/voice\n")}, vis("", 0xFF00FF));
+  rc.single = gesture({text("/rc\n")}, vis("", 0x00FFFF));
+  rc.dbl = gesture({text("/voice\n")}, vis("", 0x00FFFF));
 
   claude.encoder.single = gesture({keyTap(0, "enter")});
   c.pages.push_back(claude);
 
   PageCfg win;
   win.name = "Windows";
-  win.led = {Effect::Rainbow, 0xFFFFFF, 20};
+  win.led = {Effect::Rainbow, 0x3355FF, 20};
   win.keys[0].idle = vis("win", 0);
   win.keys[0].idle.hasColor = false;
-  win.keys[0].single = gesture({keyTap(MOD_GUI, "d")}, vis("", 0xFF00FF));
+  win.keys[0].single = gesture({keyTap(MOD_GUI, "d")}, vis("", 0x3355FF));
   win.keys[1].idle = vis("play", 0);
   win.keys[1].idle.hasColor = false;
-  win.keys[1].single = gesture({media("playpause")}, vis("", 0xFF00FF));
+  win.keys[1].single = gesture({media("playpause")}, vis("", 0x00FF00));
   win.keys[2].idle = vis("vol", 0);
   win.keys[2].idle.hasColor = false;
   win.keys[2].single = gesture({media("volup")}, vis("", 0xFFFFFF));
   win.keys[2].dbl = gesture({media("voldown")}, vis("", 0xFFFFFF));
   win.keys[3].idle = vis("stop", 0);
   win.keys[3].idle.hasColor = false;
-  win.keys[3].single = gesture({keyTap(MOD_GUI, "l")}, vis("", 0xFF00FF));
+  win.keys[3].single = gesture({keyTap(MOD_GUI, "l")}, vis("", 0xFF0000));
   win.encoder.single = gesture({media("mute")});
   c.pages.push_back(win);
 

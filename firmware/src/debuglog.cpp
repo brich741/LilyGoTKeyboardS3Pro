@@ -1,5 +1,6 @@
 #include "debuglog.h"
 
+#include <ArduinoJson.h>
 #include <TKeyboardS3Pro.h>
 #include <USB.h>
 #include <USBCDC.h>
@@ -213,6 +214,7 @@ void help() {
   reply("  ledprobe                    labelled probe of the STM32 LED registers (~40 s)");
   reply("  ledtest                     ~30 s automatic LED colour/pacing test (watch the strip)");
   reply("  ledhue 0|1                  enable real LED hues (only after flashing the fixed STM32 firmware)");
+  reply("  dumpconfig                  print the saved config.json");
   reply("  wipe                        erase config + icons and restart (back to defaults)");
   reply("  reset                       restart");
 }
@@ -280,6 +282,19 @@ void run(char* cmd) {
     TKeyboardS3Pro.ledClear();
     TKeyboardS3Pro.ledShow();
     reply("ok");
+  } else if (!strcmp(c, "dumpconfig")) {
+    JsonDocument doc;
+    {
+      app::Lock l(app::cfgMtx);
+      core::writeConfig(app::cfg, doc);
+    }
+    String out;
+    serializeJson(doc, out);
+    for (size_t i = 0; i < out.length(); i += 200) {
+      cdc.print(out.substring(i, i + 200));
+      delay(15);
+    }
+    cdc.println();
   } else if (!strcmp(c, "ledhue") && argc >= 2) {
     bool on = atoi(argv[1]) != 0;
     core::Config toSave;

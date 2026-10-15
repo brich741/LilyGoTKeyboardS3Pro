@@ -310,8 +310,7 @@ void test_visual_hold_and_after() {
   v.onHoldEnd(k, 1000, 1500);
   TEST_ASSERT_EQUAL_STRING("mic-red", v.look().icon.c_str());
   TEST_ASSERT_FALSE(v.tick(k, 1400));
-  TEST_ASSERT_TRUE(v.tick(k, 1500));   // after-state expires -> back to idle (no LED color)
-  TEST_ASSERT_FALSE(v.look().hasColor);
+  TEST_ASSERT_FALSE(v.tick(k, 1500));  // reverted to idle (same look) -> no change reported
 }
 
 void test_visual_flash_reverts_and_inherits() {
@@ -323,7 +322,7 @@ void test_visual_flash_reverts_and_inherits() {
   v.onSingle(k, 1000, 1500);
   TEST_ASSERT_EQUAL_STRING("clear", v.look().icon.c_str());  // icon inherited
   TEST_ASSERT_TRUE(v.look().hasColor);
-  TEST_ASSERT_EQUAL_UINT32(0xFF00FF, v.look().color);
+  TEST_ASSERT_EQUAL_UINT32(0xFFAA00, v.look().color);
   TEST_ASSERT_FALSE(v.tick(k, 2499));
   TEST_ASSERT_TRUE(v.tick(k, 2500));
   TEST_ASSERT_EQUAL(idleHasColor, v.look().hasColor);

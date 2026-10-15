@@ -17,7 +17,7 @@ Single source of truth shared by the firmware (`firmware/lib/core`) and the web 
     "holdMs": 400,                  // hold threshold
     "revertMs": 1500,               // default after-hold / flash duration
     "activePage": 0,
-    "ledHue": false,                // true = pad runs LilyGo's fixed STM32 firmware, real LED hues work; false = hue ignored (white/pink only)
+    "ledHue": true,                 // default true = real LED hues (needs LilyGo's fixed STM32 firmware); false = controller ignores hue, white/pink only
     "ledZones": [3, 24, 192, 1536]  // 14-bit LED masks above keys 1..4 (bit0 = LED1); default = LED pairs 1-2, 4-5, 7-8, 10-11
   },
   "icons": [ { "id": "mic-red", "name": "Mic (red)" } ],   // files live at /icons/<id>.565

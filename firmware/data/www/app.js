@@ -245,7 +245,7 @@ function mockSeedConfig() {
   return {
     version: 1,
     settings: { apSsid: 'ClaudePad', apPass: 'claudepad1', brightness: 80, ledBrightness: 40, dimMinutes: 10,
-      doubleMs: 250, holdMs: 400, revertMs: 1500, activePage: 0, ledHue: false, ledZones: DEFAULT_ZONES.slice() },
+      doubleMs: 250, holdMs: 400, revertMs: 1500, activePage: 0, ledHue: true, ledZones: DEFAULT_ZONES.slice() },
     icons: BUILTIN_ICONS.map(b => ({ id: b.id, name: b.name })),
     pages: [
       {
@@ -397,7 +397,7 @@ function blankPage(n) {
 function normalizeConfig(c) {
   c.icons = c.icons || [];
   c.settings = c.settings || {};
-  if (typeof c.settings.ledHue !== 'boolean') c.settings.ledHue = false;
+  if (typeof c.settings.ledHue !== 'boolean') c.settings.ledHue = true;
   if (!Array.isArray(c.settings.ledZones) || c.settings.ledZones.length !== 4) c.settings.ledZones = DEFAULT_ZONES.slice();
   for (const p of c.pages) {
     p.led = p.led || { effect: 'off', color: '#3355ff', speed: 50 };
@@ -883,8 +883,8 @@ function viewSettings() {
       numField('Screen brightness (5-100 %)', s.brightness, 5, 100, v => { s.brightness = v; }),
       numField('LED brightness (0-100 %)', s.ledBrightness, 0, 100, v => { s.ledBrightness = v; }),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!s.ledHue, 'aria-describedby': 'ledHueHelp',
-        onChange: e => { s.ledHue = e.target.checked; markDirty(); } }), "My pad's STM32 firmware is updated (enables real LED colors)"),
-      h('div', { class: 'hint', id: 'ledHueHelp', text: "Leave off unless you flashed LilyGo's fixed STM32 firmware; see docs/STM32_UPDATE.md" }),
+        onChange: e => { s.ledHue = e.target.checked; markDirty(); } }), "LED colors: real hue (needs the fixed STM32 firmware, see docs/STM32_UPDATE.md). Turn off for white/pink only."),
+      h('div', { class: 'hint', id: 'ledHueHelp', text: "Hue needs LilyGo's fixed STM32 firmware; without it colors show as white or pink." }),
       numField('Dim after (minutes, 0 = never)', s.dimMinutes, 0, 600, v => { s.dimMinutes = v; })),
     h('section', { class: 'card' },
       h('h3', { text: 'Timing' }),
