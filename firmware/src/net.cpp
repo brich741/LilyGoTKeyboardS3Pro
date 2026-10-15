@@ -62,6 +62,8 @@ void handleGetConfig() {
 }
 
 void handlePutConfig() {
+  if (app::factoryResetRequested) return sendError(503, "factory reset in progress");
+  if (server.clientContentLength() > 65536) return sendError(413, "config too large");
   JsonDocument doc;
   if (!parseBody(doc)) return sendError(400, "invalid JSON body");
   core::Config next;
@@ -69,6 +71,7 @@ void handlePutConfig() {
   if (!core::parseConfig(doc.as<JsonVariantConst>(), next, err)) return sendError(400, err.c_str());
 
   bool apChanged;
+  uint32_t seq;
   core::Config toSave;
   {
     app::Lock l(app::cfgMtx);
@@ -77,8 +80,9 @@ void handlePutConfig() {
     app::cfg = next;
     app::generation = app::generation + 1;
     toSave = app::cfg;
+    seq = ++app::saveSeq;
   }
-  if (!storage::save(toSave)) return sendError(500, "failed to write config");
+  if (!storage::save(toSave, seq)) return sendError(500, "failed to write config");
   sendOk();
   if (apChanged) app::restartApRequested = true;
 }
@@ -155,12 +159,16 @@ void handleIconUpload() {
 }
 
 void handleIconPostDone() {
+  // Always forget the upload afterwards so a later POST without a file can never reuse stale bytes.
+  struct Reset { ~Reset() { uploadLen = 0; uploadOverflow = false; } } reset;
+  if (app::factoryResetRequested) return sendError(503, "factory reset in progress");
   std::string id = iconIdArg();
   if (!core::validIconId(id)) return sendError(400, "bad icon id");
   if (uploadOverflow || uploadLen != storage::kIconBytes) return sendError(400, "icon must be exactly 32768 bytes");
   if (!storage::writeIcon(id, uploadBuf)) return sendError(500, "failed to store icon (flash full?)");
 
   core::Config toSave;
+  uint32_t seq = 0;
   bool changed = false;
   {
     app::Lock l(app::cfgMtx);
@@ -170,10 +178,11 @@ void handleIconPostDone() {
       app::cfg.icons.push_back({id, id});
       changed = true;
       toSave = app::cfg;
+      seq = ++app::saveSeq;
     }
     app::redrawGeneration = app::redrawGeneration + 1;
   }
-  if (changed) storage::save(toSave);
+  if (changed) storage::save(toSave, seq);
   sendOk();
 }
 
@@ -182,6 +191,7 @@ void handleIconDelete() {
   if (!core::validIconId(id)) return sendError(400, "bad icon id");
   storage::deleteIcon(id);
   core::Config toSave;
+  uint32_t seq;
   {
     app::Lock l(app::cfgMtx);
     auto& v = app::cfg.icons;
@@ -189,8 +199,9 @@ void handleIconDelete() {
       if (v[i].id == id) { v.erase(v.begin() + (long)i); break; }
     app::redrawGeneration = app::redrawGeneration + 1;
     toSave = app::cfg;
+    seq = ++app::saveSeq;
   }
-  storage::save(toSave);
+  storage::save(toSave, seq);
   sendOk();
 }
 

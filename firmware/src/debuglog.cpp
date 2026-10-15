@@ -298,12 +298,15 @@ void run(char* cmd) {
   } else if (!strcmp(c, "ledhue") && argc >= 2) {
     bool on = atoi(argv[1]) != 0;
     core::Config toSave;
+    uint32_t seq;
     {
       app::Lock l(app::cfgMtx);
       app::cfg.settings.ledHue = on;
+      app::generation = app::generation + 1;
       toSave = app::cfg;
+      seq = ++app::saveSeq;
     }
-    storage::save(toSave);
+    storage::save(toSave, seq);
     cdc.printf("ledHue = %d\n", on ? 1 : 0);
   } else if (!strcmp(c, "wipe")) {
     storage::wipe();

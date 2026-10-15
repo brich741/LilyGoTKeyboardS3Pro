@@ -13,8 +13,10 @@ bool begin();                                  // mount LittleFS (formats on fir
 
 // Config: returns the stored config, or the factory default if missing/invalid.
 core::Config load(bool* wasDefault = nullptr);
-bool save(const core::Config& cfg);            // atomic: temp file + rename
-void wipe();                                   // delete config and all icons
+// Atomic (temp file + rename), serialized across tasks. `seq` (from app::saveSeq, taken together with the
+// snapshot) makes a stale snapshot a no-op if a newer one was already written; 0 = always write.
+bool save(const core::Config& cfg, uint32_t seq = 0);
+void wipe();                                   // delete config and all non-starter icons
 
 // Icons (raw 128x128 RGB565, big-endian per pixel).
 bool iconExists(const std::string& id);

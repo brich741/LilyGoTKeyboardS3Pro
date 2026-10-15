@@ -22,6 +22,9 @@ USBHIDConsumerControl Consumer;
 
 // Sits between the per-key runners and the real USB device: a usage stays down
 // while ANY runner holds it (e.g. two keys both holding Ctrl).
+volatile uint32_t abortGen = 0;   // bumped by releaseAll()
+volatile uint32_t jobGen = 0;     // generation of the job the worker is running
+
 class SharedHid : public core::HidSink {
  public:
   void keyDown(uint8_t u) override {
@@ -35,10 +38,16 @@ class SharedHid : public core::HidSink {
     Keyboard.write((uint8_t)c);
     vTaskDelay(pdMS_TO_TICKS(6));
   }
+  bool shouldAbort() override { return abortGen != jobGen; }
   void mediaPress(uint16_t u) override { Consumer.press(u); }
   void mediaRelease() override { Consumer.release(); }
   void sleepMs(uint32_t ms) override {
-    if (ms) vTaskDelay(pdMS_TO_TICKS(ms));
+    while (ms) {   // sleep in slices so a release/page switch can interrupt a long delay
+      uint32_t t = ms > 20 ? 20 : ms;
+      vTaskDelay(pdMS_TO_TICKS(t));
+      ms -= t;
+      if (abortGen != jobGen) return;
+    }
   }
 
  private:
@@ -50,7 +59,10 @@ struct Job {
   core::Steps steps;
   bool releaseAfter;
   bool releaseOnly;
+  uint32_t gen;   // abortGen when queued; a later releaseAll() invalidates older jobs
 };
+
+constexpr size_t kMaxQueue = 16;
 
 SharedHid hid;
 core::StepRunner* runners[kRunnerCount];
@@ -60,6 +72,10 @@ TaskHandle_t worker;
 
 void push(Job&& j) {
   xSemaphoreTake(queueMtx, portMAX_DELAY);
+  if (!j.releaseOnly && queue.size() >= kMaxQueue) {   // mashing keys / spamming /api/test
+    xSemaphoreGive(queueMtx);
+    return;
+  }
   queue.push_back(std::move(j));
   xSemaphoreGive(queueMtx);
   xTaskNotifyGive(worker);
@@ -87,6 +103,8 @@ void workerTask(void*) {
         }
         continue;
       }
+      if (j.gen != abortGen) continue;   // superseded by a release since it was queued
+      jobGen = j.gen;
       runners[j.runner]->run(j.steps);
       if (j.releaseAfter) runners[j.runner]->releaseAll();
     }
@@ -122,11 +140,12 @@ void begin() {
 
 void enqueue(int runner, const core::Steps& steps, bool releaseAfter) {
   if (runner < 0 || runner >= kRunnerCount) return;
-  push(Job{runner, steps, releaseAfter, false});
+  push(Job{runner, steps, releaseAfter, false, abortGen});
 }
 
 void releaseAll(int runner) {
-  push(Job{runner, {}, false, true});
+  abortGen = abortGen + 1;   // interrupt the running job and drop queued ones
+  push(Job{runner, {}, false, true, abortGen});
 }
 
 }  // namespace actions

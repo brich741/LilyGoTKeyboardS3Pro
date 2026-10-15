@@ -200,6 +200,29 @@ void test_runner_shared_modifier_refcount() {
   TEST_ASSERT_EQUAL_STRING("u4", r.log[0].c_str());
 }
 
+struct Abortable : Rec {
+  int typed = 0;
+  bool stop = false;
+  void typeChar(char c) override {
+    Rec::typeChar(c);
+    if (++typed == 2) stop = true;
+  }
+  bool shouldAbort() override { return stop; }
+};
+
+void test_runner_abort_stops_text_and_remaining_steps() {
+  Abortable r;
+  StepRunner run(r);
+  Step t;
+  t.type = Step::Text;
+  t.text = "abcdef";
+  Step tap = keyStep(Step::Tap, 0, "a");
+  run.run({t, tap});
+  TEST_ASSERT_EQUAL(2, r.typed);              // text stopped after 2 characters
+  TEST_ASSERT_EQUAL(2, (int)r.log.size());    // and the following key step never ran
+  TEST_ASSERT_EQUAL(0, run.heldCount());
+}
+
 void test_runner_text_and_media() {
   Rec r;
   StepRunner run(r);
@@ -446,6 +469,7 @@ int main(int, char**) {
   RUN_TEST(test_runner_down_up_and_release_all);
   RUN_TEST(test_runner_shared_modifier_refcount);
   RUN_TEST(test_runner_text_and_media);
+  RUN_TEST(test_runner_abort_stops_text_and_remaining_steps);
   RUN_TEST(test_default_config_roundtrip);
   RUN_TEST(test_config_rejects_bad_input);
   RUN_TEST(test_config_clamps_and_ignores_unknown);

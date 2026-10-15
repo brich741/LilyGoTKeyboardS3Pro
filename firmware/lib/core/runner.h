@@ -16,6 +16,7 @@ class HidSink {
   virtual void mediaPress(uint16_t usage) = 0;
   virtual void mediaRelease() = 0;
   virtual void sleepMs(uint32_t ms) = 0;
+  virtual bool shouldAbort() { return false; }   // polled between steps/characters
 };
 
 // Executes Step lists against a HidSink and remembers which keys are still held

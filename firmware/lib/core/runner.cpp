@@ -64,7 +64,10 @@ void StepRunner::runStep(const Step& s) {
       break;
     }
     case Step::Text:
-      for (char c : s.text) sink_.typeChar(c);
+      for (char c : s.text) {
+        if (sink_.shouldAbort()) break;
+        sink_.typeChar(c);
+      }
       break;
     case Step::Media:
       sink_.mediaPress(s.media);
@@ -78,7 +81,10 @@ void StepRunner::runStep(const Step& s) {
 }
 
 void StepRunner::run(const Steps& steps) {
-  for (const Step& s : steps) runStep(s);
+  for (const Step& s : steps) {
+    if (sink_.shouldAbort()) break;
+    runStep(s);
+  }
 }
 
 }  // namespace core

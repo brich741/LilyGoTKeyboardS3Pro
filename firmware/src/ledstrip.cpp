@@ -21,6 +21,9 @@ bool hueOk = false;
 bool dimmed = false;
 uint16_t probeMask = 0;
 volatile bool paused = false;
+volatile bool forceFull = false;
+uint8_t prevBri = 255;
+bool prevHue = false, prevProbing = false, prevDim = false;
 
 bool havePrev = false;
 core::Rgb prev[core::kLedCount];
@@ -57,6 +60,16 @@ void task(void*) {
     probing = probeMask;
     hue = hueOk;
     xSemaphoreGive(stateMtx);
+
+    // Brightness/hue/probe/dim are not part of the RGB frame: force a full repaint when they change.
+    if (forceFull || bri != prevBri || hue != prevHue || (probing != 0) != prevProbing || dim != prevDim) {
+      havePrev = false;
+      forceFull = false;
+    }
+    prevBri = bri;
+    prevHue = hue;
+    prevProbing = probing != 0;
+    prevDim = dim;
 
     core::Rgb frame[core::kLedCount];
     if (probing) {
@@ -113,7 +126,10 @@ void setDimmed(bool d) {
   xSemaphoreGive(stateMtx);
 }
 
-void setPaused(bool p) { paused = p; }
+void setPaused(bool p) {
+  paused = p;
+  if (!p) forceFull = true;   // the strip may have been changed behind our back
+}
 
 void probe(uint16_t mask) {
   xSemaphoreTake(stateMtx, portMAX_DELAY);

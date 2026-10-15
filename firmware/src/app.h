@@ -15,6 +15,7 @@ extern SemaphoreHandle_t cfgMtx;   // guards cfg, generation, activePage
 extern SemaphoreHandle_t hwMtx;    // guards I2C/SPI: displays, keys, LEDs
 
 extern core::Config cfg;
+extern uint32_t saveSeq;                   // bumped (under cfgMtx) for every config snapshot that gets saved
 extern volatile uint32_t generation;  // bumped whenever cfg is replaced
 extern volatile uint32_t redrawGeneration;  // bumped when icon files change
 extern volatile uint32_t requestedPage;  // set by web API; UINT32_MAX = none

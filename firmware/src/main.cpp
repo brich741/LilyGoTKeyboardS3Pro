@@ -19,6 +19,7 @@ namespace app {
 SemaphoreHandle_t cfgMtx;
 SemaphoreHandle_t hwMtx;
 core::Config cfg;
+uint32_t saveSeq = 0;
 volatile uint32_t generation = 1;
 volatile uint32_t redrawGeneration = 1;
 volatile uint32_t requestedPage = UINT32_MAX;
@@ -44,6 +45,7 @@ uint32_t seenRedraw = 0;
 uint8_t page = 0;
 bool forceRedraw = true;
 bool infoShown = false;
+bool infoArmed = false;    // the info screen only closes after the opening press was released
 uint32_t bannerUntil = 0;
 bool bannerShown = false;
 std::string bannerLabel;
@@ -79,7 +81,6 @@ void resetVisuals() {
 }
 
 void dispatch(int i, core::GEvent ev, uint32_t now) {
-  debuglog::printf("[evt] input=%d event=%d page=%u\n", i, (int)ev, (unsigned)page);
   const core::PageCfg& p = app::cfg.pages[page];
   const core::KeyCfg& k = keyCfg(p, i);
   uint16_t revert = app::cfg.settings.revertMs;
@@ -113,10 +114,10 @@ void switchPage(int target, uint32_t now) {
   if (target == page) return;
 
   // End any hold in progress on the page we are leaving.
+  actions::releaseAll();   // abort whatever is running and release held keys first ...
   for (int i = 0; i < kEncoder; ++i)
-    if (eng[i].reset()) dispatch(i, core::GEvent::HoldEnd, now);
+    if (eng[i].reset()) dispatch(i, core::GEvent::HoldEnd, now);   // ... then run the old page's hold-end steps
   eng[kEncoder].reset();
-  actions::releaseAll();
 
   page = (uint8_t)target;
   app::cfg.settings.activePage = page;
@@ -185,6 +186,7 @@ void loop() {
   std::string ssid, pass;
   std::string iconNames[core::kKeyCount];
   bool doSave = false;
+  uint32_t saveSeqLocal = 0;
   core::Config toSave;
   bool resetNow = false;
 
@@ -207,10 +209,8 @@ void loop() {
       seenRedraw = app::redrawGeneration;
       forceRedraw = true;
     }
-    if (app::requestedPage != UINT32_MAX) {
-      switchPage((int)app::requestedPage, now);
-      app::requestedPage = UINT32_MAX;
-    }
+    uint32_t wanted = __atomic_exchange_n(&app::requestedPage, UINT32_MAX, __ATOMIC_ACQ_REL);
+    if (wanted != UINT32_MAX) switchPage((int)wanted, now);
 
     // Any activity wakes the screens.
     bool anyDown = keys != 0;
@@ -230,9 +230,12 @@ void loop() {
     }
 
     if (infoShown) {
-      // Any key press or knob turn closes the Wi-Fi info screen and is swallowed.
-      if (keys != 0 || encDelta != 0) {
+      // Any key press or knob turn closes the Wi-Fi info screen and is swallowed, but only after the
+      // press that opened it (3 s encoder hold) has been released.
+      if (keys == 0 && encDelta == 0) infoArmed = true;
+      if (infoArmed && (keys != 0 || encDelta != 0)) {
         infoShown = false;
+        infoArmed = false;
         hideInfo = true;
         for (int i = 0; i < kInputs; ++i) eng[i].reset();
       }
@@ -250,6 +253,7 @@ void loop() {
       if (eng[kEncoder].isDown() && now - eng[kEncoder].downSinceMs() >= kWifiInfoHoldMs) {
         eng[kEncoder].reset();   // swallow the rest of this press
         infoShown = true;
+        infoArmed = false;
         showInfo = true;
         ssid = app::cfg.settings.apSsid;
         pass = app::cfg.settings.apPass;
@@ -278,6 +282,7 @@ void loop() {
       savePending = false;
       doSave = true;
       toSave = app::cfg;
+      saveSeqLocal = ++app::saveSeq;
     }
     if (app::factoryResetRequested) resetNow = true;
   }
@@ -289,7 +294,7 @@ void loop() {
     delay(300);
     ESP.restart();
   }
-  if (doSave) storage::save(toSave);
+  if (doSave) storage::save(toSave, saveSeqLocal);
 
   // ---- drawing (slow; no config lock held) ----
   if (showInfo) {
