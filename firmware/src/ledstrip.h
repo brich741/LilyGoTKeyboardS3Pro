@@ -11,7 +11,7 @@ void begin();
 
 // Replace what the strip should show. Cheap; call whenever something changes.
 void set(const core::LedCfg& page, const uint16_t zones[core::kKeyCount],
-         const core::KeyLook looks[core::kKeyCount], uint8_t brightnessPct);
+         const core::KeyLook looks[core::kKeyCount], uint8_t brightnessPct, bool hue);
 
 void setDimmed(bool dimmed);
 

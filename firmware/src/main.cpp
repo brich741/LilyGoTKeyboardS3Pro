@@ -179,6 +179,7 @@ void loop() {
   core::LedCfg led;
   uint16_t zones[core::kKeyCount];
   uint8_t ledBrightness, screenBrightness = 0;
+  bool ledHue = false;
   uint16_t dimMinutes;
   bool drawBanner = false, clearBanner = false, showInfo = false, hideInfo = false;
   std::string ssid, pass;
@@ -261,6 +262,7 @@ void loop() {
     led = app::cfg.pages[page].led;
     for (int i = 0; i < core::kKeyCount; ++i) zones[i] = app::cfg.settings.ledZones[i];
     ledBrightness = app::cfg.settings.ledBrightness;
+    ledHue = app::cfg.settings.ledHue;
 
     if (bannerUntil && !bannerShown && !infoShown) {
       drawBanner = true;
@@ -280,7 +282,7 @@ void loop() {
     if (app::factoryResetRequested) resetNow = true;
   }
 
-  ledstrip::set(led, zones, looks, ledBrightness);
+  ledstrip::set(led, zones, looks, ledBrightness, ledHue);
 
   if (resetNow) {
     storage::wipe();

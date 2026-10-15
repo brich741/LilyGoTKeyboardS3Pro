@@ -15,12 +15,12 @@ struct Rgb {
 inline Rgb rgbFromHex(uint32_t c) { return {(uint8_t)(c >> 16), (uint8_t)(c >> 8), (uint8_t)c}; }
 
 // Fill `out[14]` with the page's idle effect at time `tMs`.
-void renderEffect(const LedCfg& cfg, uint32_t tMs, Rgb out[kLedCount]);
+void renderEffect(const LedCfg& cfg, uint32_t tMs, Rgb out[kLedCount], bool hue = false);
 
 // Effect plus per-key zone overrides: a key whose current look has a color
 // paints only its own zone (mask over the 14 LEDs) with that color.
 void composeLeds(const LedCfg& cfg, const uint16_t zones[kKeyCount],
-                 const KeyLook looks[kKeyCount], uint32_t tMs, Rgb out[kLedCount]);
+                 const KeyLook looks[kKeyCount], uint32_t tMs, Rgb out[kLedCount], bool hue = false);
 
 // The STM32 paints one HSV color per select operation. NOTE: on the shipped STM32 firmware the hue
 // registers have no effect (verified on hardware): only brightness and saturation work, so every
@@ -43,6 +43,6 @@ struct PaintOp {
 // operations as possible. Colors are quantized, and `brightnessPct` (0..100)
 // scales V. `prev` may be nullptr (paint everything). Returns the op count.
 int planPaint(const Rgb* prev, const Rgb next[kLedCount], uint8_t brightnessPct,
-              PaintOp ops[kLedCount]);
+              PaintOp ops[kLedCount], bool hue = false);
 
 }  // namespace core

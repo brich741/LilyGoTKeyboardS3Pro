@@ -41,7 +41,7 @@ uint32_t hash(uint32_t a, uint32_t b) {
 
 }  // namespace
 
-void renderEffect(const LedCfg& cfg, uint32_t t, Rgb out[kLedCount]) {
+void renderEffect(const LedCfg& cfg, uint32_t t, Rgb out[kLedCount], bool hue) {
   Rgb base = rgbFromHex(cfg.color);
   float sec = t / 1000.0f;
   float speed = (float)cfg.speed;
@@ -61,6 +61,11 @@ void renderEffect(const LedCfg& cfg, uint32_t t, Rgb out[kLedCount]) {
       break;
     }
     case Effect::Rainbow: {
+      if (hue) {   // STM32 with fixed firmware: a real rainbow
+        float rot = sec * speed * 2.0f;
+        for (int i = 0; i < kLedCount; ++i) out[i] = fromHsv(rot + i * (360.0f / kLedCount), 1, 1);
+        break;
+      }
       // This board's STM32 ignores hue, so "rainbow" is a rotating white <-> pink (saturation) wave.
       float phase = sec * speed * 0.06f;
       for (int i = 0; i < kLedCount; ++i) {
@@ -93,8 +98,8 @@ void renderEffect(const LedCfg& cfg, uint32_t t, Rgb out[kLedCount]) {
 }
 
 void composeLeds(const LedCfg& cfg, const uint16_t zones[kKeyCount],
-                 const KeyLook looks[kKeyCount], uint32_t t, Rgb out[kLedCount]) {
-  renderEffect(cfg, t, out);
+                 const KeyLook looks[kKeyCount], uint32_t t, Rgb out[kLedCount], bool hue) {
+  renderEffect(cfg, t, out, hue);
   for (int k = 0; k < kKeyCount; ++k) {
     if (!looks[k].hasColor) continue;
     Rgb c = rgbFromHex(looks[k].color);
@@ -122,13 +127,14 @@ Hsv toHsv(Rgb c) {
 }
 
 int planPaint(const Rgb* prev, const Rgb next[kLedCount], uint8_t brightnessPct,
-              PaintOp ops[kLedCount]) {
+              PaintOp ops[kLedCount], bool hue) {
   int n = 0;
   for (int i = 0; i < kLedCount; ++i) {
     if (prev && prev[i] == next[i]) continue;
     Hsv c = toHsv(next[i]);
     // Quantize to keep the number of distinct colors (= I2C bursts) small.
-    c.h = 0;   // hue is ignored by the board's STM32 firmware; keep groups few
+    if (hue) c.h = (uint16_t)((c.h / 6) * 6);   // fixed STM32 firmware: real hue, quantized
+    else c.h = 0;                               // old firmware ignores hue; keep groups few
     c.s = (uint8_t)((c.s / 5) * 5);
     c.v = (uint8_t)(((uint32_t)c.v * brightnessPct / 100 / 4) * 4);
     int slot = -1;

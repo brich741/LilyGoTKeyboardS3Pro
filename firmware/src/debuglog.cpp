@@ -212,6 +212,7 @@ void help() {
   reply("  huesweep                    sweep hue registers 0x05/0x06 (~25 s, labelled)");
   reply("  ledprobe                    labelled probe of the STM32 LED registers (~40 s)");
   reply("  ledtest                     ~30 s automatic LED colour/pacing test (watch the strip)");
+  reply("  ledhue 0|1                  enable real LED hues (only after flashing the fixed STM32 firmware)");
   reply("  wipe                        erase config + icons and restart (back to defaults)");
   reply("  reset                       restart");
 }
@@ -279,6 +280,16 @@ void run(char* cmd) {
     TKeyboardS3Pro.ledClear();
     TKeyboardS3Pro.ledShow();
     reply("ok");
+  } else if (!strcmp(c, "ledhue") && argc >= 2) {
+    bool on = atoi(argv[1]) != 0;
+    core::Config toSave;
+    {
+      app::Lock l(app::cfgMtx);
+      app::cfg.settings.ledHue = on;
+      toSave = app::cfg;
+    }
+    storage::save(toSave);
+    cdc.printf("ledHue = %d\n", on ? 1 : 0);
   } else if (!strcmp(c, "wipe")) {
     storage::wipe();
     reply("wiped; restarting");

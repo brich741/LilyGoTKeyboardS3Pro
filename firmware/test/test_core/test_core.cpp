@@ -393,6 +393,24 @@ void test_hue_is_dropped_but_saturation_and_value_kept() {
   TEST_ASSERT_TRUE(sawWhite);
 }
 
+void test_hue_mode_keeps_hue_groups() {
+  Rgb in[kLedCount];
+  in[0] = rgbFromHex(0xFF0000);
+  in[1] = rgbFromHex(0x00FF00);
+  in[2] = rgbFromHex(0x0000FF);
+  for (int i = 3; i < kLedCount; ++i) in[i] = Rgb();
+  PaintOp ops[kLedCount];
+  int n = planPaint(nullptr, in, 100, ops, true);
+  bool r = false, g = false, b = false;
+  for (int i = 0; i < n; ++i) {
+    if (ops[i].color.v == 0) continue;
+    if (ops[i].color.h == 0) r = true;
+    if (ops[i].color.h == 120) g = true;
+    if (ops[i].color.h == 240) b = true;
+  }
+  TEST_ASSERT_TRUE(r && g && b);
+}
+
 void test_effects_are_bounded_and_animate() {
   const Effect all[] = {Effect::Solid, Effect::Breathe, Effect::Rainbow, Effect::Chase,
                         Effect::Sparkle};
@@ -440,6 +458,7 @@ int main(int, char**) {
   RUN_TEST(test_led_zone_overlay);
   RUN_TEST(test_plan_paint_groups_and_diffs);
   RUN_TEST(test_hue_is_dropped_but_saturation_and_value_kept);
+  RUN_TEST(test_hue_mode_keeps_hue_groups);
   RUN_TEST(test_effects_are_bounded_and_animate);
   return UNITY_END();
 }

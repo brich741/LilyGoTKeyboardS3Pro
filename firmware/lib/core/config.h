@@ -84,6 +84,7 @@ struct Settings {
   uint16_t holdMs = 400;
   uint16_t revertMs = 1500;
   uint8_t activePage = 0;
+  bool ledHue = false;           // true once the STM32 runs LilyGo's fixed (V2) firmware: real colours
   uint16_t ledZones[kKeyCount] = {0x0003, 0x0018, 0x00C0, 0x0600};
 };
 

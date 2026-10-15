@@ -17,6 +17,7 @@ core::LedCfg pageCfg;
 uint16_t zones[core::kKeyCount];
 core::KeyLook looks[core::kKeyCount];
 uint8_t brightness = 40;
+bool hueOk = false;
 bool dimmed = false;
 uint16_t probeMask = 0;
 volatile bool paused = false;
@@ -46,6 +47,7 @@ void task(void*) {
     uint8_t bri;
     bool dim;
     uint16_t probing;
+    bool hue;
     xSemaphoreTake(stateMtx, portMAX_DELAY);
     cfg = pageCfg;
     memcpy(z, zones, sizeof(z));
@@ -53,6 +55,7 @@ void task(void*) {
     bri = brightness;
     dim = dimmed;
     probing = probeMask;
+    hue = hueOk;
     xSemaphoreGive(stateMtx);
 
     core::Rgb frame[core::kLedCount];
@@ -62,11 +65,11 @@ void task(void*) {
     } else if (dim) {
       for (auto& p : frame) p = core::Rgb();
     } else {
-      core::composeLeds(cfg, z, lk, millis(), frame);
+      core::composeLeds(cfg, z, lk, millis(), frame, hue);
     }
 
     core::PaintOp ops[core::kLedCount];
-    int n = core::planPaint(havePrev ? prev : nullptr, frame, probing ? 100 : bri, ops);
+    int n = core::planPaint(havePrev ? prev : nullptr, frame, probing ? 100 : bri, ops, hue);
     if (n > 0) {
       app::Lock l(app::hwMtx);
       if (!modeSet) {
@@ -92,7 +95,7 @@ void begin() {
 }
 
 void set(const core::LedCfg& page, const uint16_t z[core::kKeyCount],
-         const core::KeyLook l[core::kKeyCount], uint8_t brightnessPct) {
+         const core::KeyLook l[core::kKeyCount], uint8_t brightnessPct, bool hue) {
   xSemaphoreTake(stateMtx, portMAX_DELAY);
   pageCfg = page;
   for (int i = 0; i < core::kKeyCount; ++i) {
@@ -100,6 +103,7 @@ void set(const core::LedCfg& page, const uint16_t z[core::kKeyCount],
     looks[i] = l[i];
   }
   brightness = brightnessPct;
+  hueOk = hue;
   xSemaphoreGive(stateMtx);
 }
 
