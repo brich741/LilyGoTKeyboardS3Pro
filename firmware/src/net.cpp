@@ -235,6 +235,9 @@ void serverTask(void*) {
   }
 }
 
+bool apStarted = false;
+int apAttempts = 0;
+
 void startAp() {
   std::string ssid, pass;
   {
@@ -242,9 +245,10 @@ void startAp() {
     ssid = app::cfg.settings.apSsid;
     pass = app::cfg.settings.apPass;
   }
-  WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(kApIp, kApIp, IPAddress(255, 255, 255, 0));
-  WiFi.softAP(ssid.c_str(), pass.c_str());
+  ++apAttempts;
+  bool modeOk = WiFi.mode(WIFI_AP);
+  bool cfgOk = WiFi.softAPConfig(kApIp, kApIp, IPAddress(255, 255, 255, 0));
+  apStarted = WiFi.softAP(ssid.c_str(), pass.c_str()) && modeOk && cfgOk;
   dns.start(53, "*", kApIp);
 }
 
@@ -258,6 +262,13 @@ void restartAp() {
 }
 
 String ipString() { return kApIp.toString(); }
+
+String debugInfo() {
+  String s = String("wifi mode=") + (int)WiFi.getMode() + " apStarted=" + (apStarted ? 1 : 0) +
+             " attempts=" + apAttempts + " ssid=" + WiFi.softAPSSID() + " ip=" + WiFi.softAPIP().toString() +
+             " stations=" + WiFi.softAPgetStationNum() + " heap=" + ESP.getFreeHeap();
+  return s;
+}
 
 void begin() {
   uploadBuf = (uint8_t*)malloc(storage::kIconBytes);

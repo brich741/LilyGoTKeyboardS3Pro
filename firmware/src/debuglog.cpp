@@ -9,6 +9,7 @@
 #include "actions.h"
 #include "app.h"
 #include "keymap.h"
+#include "net.h"
 #include "ledstrip.h"
 #include "screens.h"
 #include "storage.h"
@@ -214,6 +215,7 @@ void help() {
   reply("  ledprobe                    labelled probe of the STM32 LED registers (~40 s)");
   reply("  ledtest                     ~30 s automatic LED colour/pacing test (watch the strip)");
   reply("  ledhue 0|1                  enable real LED hues (only after flashing the fixed STM32 firmware)");
+  reply("  wifi                        Wi-Fi access point state");
   reply("  dumpconfig                  print the saved config.json");
   reply("  wipe                        erase config + icons and restart (back to defaults)");
   reply("  reset                       restart");
@@ -282,6 +284,8 @@ void run(char* cmd) {
     TKeyboardS3Pro.ledClear();
     TKeyboardS3Pro.ledShow();
     reply("ok");
+  } else if (!strcmp(c, "wifi")) {
+    cdc.println(net::debugInfo());
   } else if (!strcmp(c, "dumpconfig")) {
     JsonDocument doc;
     {
