@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>ClaudePad</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<a class="skip" href="#view">Skip to content</a>
+
+<header class="top">
+  <div class="top-row">
+    <h1>ClaudePad</h1>
+    <span id="mockBadge" class="badge" hidden>MOCK MODE</span>
+    <span id="statusLine" class="muted small"></span>
+  </div>
+  <nav id="nav" aria-label="Sections"></nav>
+</header>
+
+<main id="view" tabindex="-1" aria-live="off"></main>
+
+<div id="sheet" class="sheet" hidden></div>
+
+<div id="saveBar" class="savebar" hidden>
+  <span id="saveMsg">Unsaved changes</span>
+  <button type="button" id="discardBtn" class="btn">Discard</button>
+  <button type="button" id="saveBtn" class="btn primary">Save</button>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<noscript>This page needs JavaScript.</noscript>
+<script src="app.js"></script>
+</body>
+</html>
