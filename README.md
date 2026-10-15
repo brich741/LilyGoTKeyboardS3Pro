@@ -41,13 +41,21 @@ The starter "Claude Code" page holds **Ctrl+D** while key 1 is held (the VS Code
 
 ## LED limitation (hardware)
 
-The pad's STM32 co-processor ignores the **hue** registers in free LED mode. This was verified with LilyGo's own
-unmodified `RGB.ino`, a red/green/blue test, register sweeps, and both Arduino-ESP32 core 3.x and 2.0.14: every
-hue paints the same colour. What works is per-LED **brightness** and **saturation**, so colours render as
-white (pale) up to one fixed magenta-pink (saturated), and the "rainbow" effect is a rotating white/pink wave.
-The STM32's own built-in red/green/blue demo cycle does work (all LEDs together), but cannot be steered.
-Getting real colours would need the STM32 firmware replaced, which this project does not attempt (a failed
-flash would disable keys, LEDs and screen selection).
+Root cause: a bug in the **factory STM32 firmware** (LilyGo issue
+[T-Keyboard-S3-Pro#7](https://github.com/Xinyuan-LilyGO/T-Keyboard-S3-Pro/issues/7)). Its hue handler ORs each new
+hue into the old value instead of replacing it, so hue can never be set. We reproduced it with LilyGo's unmodified
+`RGB.ino`, a red/green/blue test, register sweeps, and Arduino-ESP32 core 3.x and 2.0.14. Brightness and saturation
+do work, so this project renders colours as white (pale) up to a fixed magenta-pink (saturated), and the
+"rainbow" effect is a rotating white/pink wave. The STM32's built-in red/green/blue demo cycle also works (all
+LEDs together) but cannot be steered.
+
+Fix (needs hardware): LilyGo shipped corrected STM32 firmware (V2, 2025-01-23) in the `firmware` folder of the
+[`stm32cubeg0-firmware-package_V1.6.2`](https://github.com/Xinyuan-LilyGO/T-Keyboard-S3-Pro/tree/stm32cubeg0-firmware-package_V1.6.2)
+branch (use the `STM32G030F6P6_Drive_0x01` hex for the main board). Per LilyGo it is flashed with an ST-Link or a
+CH340 serial adapter after opening the device; the programming headers are small non-standard connectors. This
+project does not flash the STM32 itself (a failed flash would disable keys, LEDs and screen selection). Once the
+STM32 is updated, switching this firmware back to full HSV colour is a small change in `lib/core/leds.cpp`
+(`planPaint` keeps `h = 0`) and `rainbow`.
 
 Diagnostic builds used for this live in `firmware/diag` (`pio run -e rgbdemo|ledexamples|rgbcycle|rgbdemo_core2|rgbcycle_core2 -t upload`);
 flash `esp32s3` again afterwards. The serial console (`help`, `ledprobe`, `huesweep`, `type`, `tap`, `wipe`) is on the pad's
