@@ -5,3 +5,4 @@ compile_commands.json
 
 # LilyGo STM32 firmware is GPL-3.0: keep the local copy, do not commit it
 tools/stm32/*.hex
+.hosttest/

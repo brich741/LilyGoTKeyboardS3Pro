@@ -7,7 +7,9 @@ Turns the T-Keyboard S3 Pro into a USB macro pad you configure from your phone, 
 - RGB strip: per-page animation and per-key lighting over the key that is pressed (white / pink only, see below)
 - Config lives on the device; the device hosts its own Wi-Fi network and web UI
 
-See [docs/CONFIG.md](docs/CONFIG.md) for the config/API contract and [docs/CONTEXT.md](docs/CONTEXT.md) for the vocabulary.
+Start with [docs/DESIGN.md](docs/DESIGN.md) (architecture, decisions and rationale, hardware findings, open items). See also
+[docs/CONFIG.md](docs/CONFIG.md) (config/API contract), [docs/CONTEXT.md](docs/CONTEXT.md) (vocabulary) and
+[docs/STM32_UPDATE.md](docs/STM32_UPDATE.md) (co-processor firmware update for real LED colours).
 
 ## Build and flash
 
@@ -61,11 +63,12 @@ USB serial port; after closing a terminal on it the pad may fall into ROM downlo
 
 ## Tests
 
-Host-side unit tests for `firmware/lib/core` (gesture engine, config, key runner, LED effects):
+Host-side unit tests for `firmware/lib/core` (gesture engine, config, key runner, LED effects), no system compiler needed:
 
 ```
-cd firmware
-pio test -e native      # needs a host C++ compiler (gcc/clang) on PATH
+python tools/host_tests.py      # bootstraps zig + Unity + ArduinoJson into .hosttest/, then runs 28 tests
 ```
+
+(`pio test -e native` also works if gcc/clang is on PATH.)
 
 Web UI without hardware: serve `firmware/data/www` (for example `python -m http.server`) and open `index.html?mock`.
