@@ -29,6 +29,7 @@ const KEY_SET = new Set(KEY_GROUPS.flatMap(g => g[1]));
 const MAX_STEPS = 32;
 const MAX_TEXT = 256;
 const MS_FOREVER = 65535;
+const HUE_NOTICE = "This pad's LED controller ignores hue: colors show as white or pink; brightness works. Pick bright/saturated = pink, pale = white, dark = dim.";
 const DEFAULT_ZONES = [7, 56, 448, 3584];
 
 /* ======================================================================
@@ -430,6 +431,7 @@ function iconCanvas(id) {
 }
 
 /* ---- reusable form widgets ---- */
+function hueNotice() { return h('div', { class: 'notice info small', role: 'note', text: HUE_NOTICE }); }
 function field(label, control, hint) {
   return h('label', { class: 'field' }, h('span', { class: 'lbl', text: label }), control, hint ? h('div', { class: 'hint', text: hint }) : null);
 }
@@ -540,9 +542,10 @@ function viewKeys() {
   root.append(h('section', { class: 'card', 'aria-label': 'Page settings' },
     h('h2', { text: 'Page settings' }),
     nameInp,
-    selectField('LED effect', EFFECTS, pg.led.effect, v => { pg.led.effect = v; markDirty(); }),
+    selectField('LED effect', EFFECTS.map(e => [e, e === 'rainbow' ? 'wave (white/pink)' : e]), pg.led.effect, v => { pg.led.effect = v; markDirty(); }),
     colorField('LED color', pg.led.color, v => { pg.led.color = v; }, false),
-    numField('LED speed (1-100)', pg.led.speed, 1, 100, v => { pg.led.speed = v; })));
+    numField('LED speed (1-100)', pg.led.speed, 1, 100, v => { pg.led.speed = v; }),
+    hueNotice()));
   return root;
 }
 
@@ -615,6 +618,7 @@ function idleEditor(key, rerender) {
     iconPicker(key.idle.icon, v => { key.idle.icon = v; }, 'None', rerender),
     h('h3', { text: 'Idle LED color' }),
     colorField('Light the key LED', key.idle.color, v => { key.idle.color = v; }, true, rerender),
+    hueNotice(),
     h('p', { class: 'hint', text: 'Shown whenever the key is not being used.' }));
 }
 
@@ -623,7 +627,8 @@ function visualBlock(obj, rerender, iconLabel, iconNone, colorLabel) {
   return h('div', null,
     h('h3', { text: iconLabel }),
     iconPicker(obj.icon || '', v => { if (v) obj.icon = v; else delete obj.icon; }, iconNone, rerender),
-    colorField(colorLabel, obj.color || '', v => { if (v) obj.color = v; else delete obj.color; }, true, rerender));
+    colorField(colorLabel, obj.color || '', v => { if (v) obj.color = v; else delete obj.color; }, true, rerender),
+    hueNotice());
 }
 
 function enableToggle(key, name, label, make, rerender) {
@@ -889,7 +894,7 @@ function probe(mask) { return guard(() => api('POST', '/api/leds/probe', { mask 
 function restoreLeds() { probe(0); }
 function viewLeds() {
   const z = cfg.settings.ledZones, sel = state.ledSel;
-  const root = h('div', null, h('h2', { text: 'LED calibration' }),
+  const root = h('div', null, h('h2', { text: 'LED calibration' }), hueNotice(),
     h('p', { class: 'muted', text: 'Tap an LED number: that single LED lights up white on the pad. Then say which key it sits above.' }));
   root.append(h('div', { class: 'led-grid' }, Array.from({ length: 14 }, (_, i) => {
     const zi = zoneOf(i);
