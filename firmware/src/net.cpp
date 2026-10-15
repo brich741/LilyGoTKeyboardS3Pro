@@ -5,6 +5,7 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <esp_idf_version.h>
 #include <uri/UriBraces.h>
 
 #include "actions.h"
@@ -217,9 +218,10 @@ void handleIndex() {
 }
 
 void handleNotFound() {
-  // Captive portal: send every unknown host/path to the UI.
+  // Captive portal: send every unknown host/path (and the OS connectivity probes) to the UI.
   server.sendHeader("Location", String("http://") + kApIp.toString() + "/");
-  server.send(302, "text/plain", "");
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(302, "text/plain", "ClaudePad settings: http://192.168.4.1/");
 }
 
 void serverTask(void*) {
@@ -236,6 +238,7 @@ void serverTask(void*) {
 }
 
 bool apStarted = false;
+bool captiveDhcp = false;
 int apAttempts = 0;
 
 void startAp() {
@@ -247,8 +250,16 @@ void startAp() {
   }
   ++apAttempts;
   bool modeOk = WiFi.mode(WIFI_AP);
-  bool cfgOk = WiFi.softAPConfig(kApIp, kApIp, IPAddress(255, 255, 255, 0));
+  // The last argument makes the AP's DHCP server hand out *itself* as the DNS server. Without it phones
+  // keep their own DNS, our wildcard DNS never sees the lookups, and the captive-portal redirect cannot work.
+  bool cfgOk = WiFi.softAPConfig(kApIp, kApIp, IPAddress(255, 255, 255, 0), IPAddress(192, 168, 4, 2), kApIp);
   apStarted = WiFi.softAP(ssid.c_str(), pass.c_str()) && modeOk && cfgOk;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 2)
+  // RFC 8910 / DHCP option 114: tells Android 11+ and iOS 14+ where the portal page is, so the
+  // "sign in to network" prompt appears right away.
+  captiveDhcp = WiFi.AP.enableDhcpCaptivePortal();
+#endif
+  dns.setTTL(30);
   dns.start(53, "*", kApIp);
 }
 
@@ -265,7 +276,7 @@ String ipString() { return kApIp.toString(); }
 
 String debugInfo() {
   String s = String("wifi mode=") + (int)WiFi.getMode() + " apStarted=" + (apStarted ? 1 : 0) +
-             " attempts=" + apAttempts + " ssid=" + WiFi.softAPSSID() + " ip=" + WiFi.softAPIP().toString() +
+             " captiveDhcp=" + (captiveDhcp ? 1 : 0) + " attempts=" + apAttempts + " ssid=" + WiFi.softAPSSID() + " ip=" + WiFi.softAPIP().toString() +
              " stations=" + WiFi.softAPgetStationNum() + " heap=" + ESP.getFreeHeap();
   return s;
 }
@@ -286,6 +297,15 @@ void begin() {
   server.on(UriBraces("/api/icons/{}"), HTTP_GET, handleIconGet);
   server.on(UriBraces("/api/icons/{}"), HTTP_POST, handleIconPostDone, handleIconUpload);
   server.on(UriBraces("/api/icons/{}"), HTTP_DELETE, handleIconDelete);
+  // Connectivity-check URLs the phone/PC OS requests right after joining. Anything other than the
+  // expected "online" answer makes the OS pop up its "sign in to network" page, which we redirect to the UI.
+  static const char* const kProbePaths[] = {
+      "/generate_204", "/gen_204",                                        // Android / Chrome
+      "/hotspot-detect.html", "/library/test/success.html", "/bag",       // Apple
+      "/connecttest.txt", "/ncsi.txt", "/redirect", "/fwlink",            // Windows
+      "/canonical.html", "/success.txt", "/chat",                          // Firefox / misc.
+  };
+  for (const char* path : kProbePaths) server.on(path, HTTP_ANY, handleNotFound);
   server.serveStatic("/", LittleFS, "/www/", "max-age=300");
   server.onNotFound(handleNotFound);
   server.begin();

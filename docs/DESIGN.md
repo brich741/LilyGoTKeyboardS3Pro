@@ -98,6 +98,16 @@ zone). `planPaint` groups changed LEDs by quantized HSV into few paint ops; the 
 `settings.ledHue` (default **true**): real hues. `false` = legacy white/pink mode for pads still on the factory STM32 firmware
 (hue forced to 0, `rainbow` becomes a rotating white<->pink saturation wave). Switch via web UI Settings or console `ledhue 0|1`.
 
+### Captive portal (auto-open the settings page)
+Goal: joining `ClaudePad` should take the user to the UI without typing a URL. How it works (`net.cpp`):
+- `WiFi.softAPConfig(ip, gw, mask, dhcpStart, dns = ip)`: the **last argument is essential**. The core only makes the AP's DHCP offer itself as the DNS server
+  when a DNS address is passed; without it phones keep their own DNS and our wildcard `DNSServer` (every name -> 192.168.4.1) never sees a lookup.
+- `WiFi.AP.enableDhcpCaptivePortal()` adds DHCP option 114 (RFC 8910) so Android 11+/iOS 14+ show the sign-in prompt immediately (`captiveDhcp=1` in the `wifi` console command).
+- The OS connectivity-check URLs (`/generate_204`, `/hotspot-detect.html`, `/connecttest.txt`, `/ncsi.txt`, ...) and every unknown path answer **302 -> http://192.168.4.1/**,
+  which is what makes the OS show "Sign in to network". `/` serves the UI for any Host header, so typing any `http://name` also works.
+- Limits: HTTPS URLs cannot be redirected (browser security); captive-portal mini-browsers (Android sign-in sheet, iOS) often can't open file pickers or
+  download files, so icon upload and export should be done from the normal browser at http://192.168.4.1. Not yet verified end to end on a real phone.
+
 ## 6. USB / Windows lessons
 - `ARDUINO_USB_MODE=0` (TinyUSB) with **`ARDUINO_USB_CDC_ON_BOOT=0`**. With CDC-on-boot the core calls `USB.begin()` before `setup()`, so the HID
   interfaces registered later never enumerate (the pad showed only a serial port). We register HID + our own `USBCDC` console, then `USB.begin()`.
