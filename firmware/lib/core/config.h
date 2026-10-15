@@ -84,6 +84,7 @@ struct Settings {
   uint16_t holdMs = 400;
   uint16_t revertMs = 1500;
   uint8_t activePage = 0;
+  bool wifiEnabled = true;       // access point on/off; switched on the pad itself (knob), persisted
   bool ledHue = true;            // real LED colours (needs LilyGo's fixed V2 STM32 firmware); false = white/pink only
   uint16_t ledZones[kKeyCount] = {0x0003, 0x0018, 0x00C0, 0x0600};
 };

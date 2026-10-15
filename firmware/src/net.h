@@ -7,6 +7,9 @@ namespace net {
 void begin();            // start AP + web server task (config must be loaded)
 void restartAp();        // re-apply SSID/password from the current config
 String ipString();
+void requestWifi(bool on);   // switch the access point on/off (applied by the web task)
+bool wifiOn();             // the access point is currently running
+int clientCount();         // stations connected right now (0 when off)
 String debugInfo();       // one-paragraph Wi-Fi/AP state for the serial console
 
 }  // namespace net

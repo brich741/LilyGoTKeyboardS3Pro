@@ -63,6 +63,10 @@ Layers (`firmware/`):
 | Encoder push is a 5th input (single/double only). A 3 s hold is **reserved** and shows Wi-Fi SSID/password | recovery/convenience; the hold gesture is dropped from encoder config on parse |
 | Encoder rotation = page switch (wraps), page name banner for 1 s, last page remembered (debounced save) | requested behaviour |
 | Info screen closes only after the opening press is released | otherwise it flashed for one frame |
+| Wi-Fi screen (3 s knob hold) shows state, network name, password, address, client count; **knob push toggles Wi-Fi** (persisted as `settings.wifiEnabled`); any key or turning closes | control and visibility on the pad itself, no phone needed; off saves power and removes the open-AP exposure |
+| Wi-Fi on/off is applied by the **web task** (`net::requestWifi`), which owns the WebServer/DNS objects; the server socket is created at the first enable | avoids touching the stack from two tasks; the listening socket needs the TCP/IP stack |
+| Holding the knob at power-up resets SSID/password **and turns Wi-Fi back on** | recovery if Wi-Fi was switched off and the pad is otherwise unreachable |
+| The phone UI has no Wi-Fi toggle (only a help note) and passes `wifiEnabled` through unchanged | switching Wi-Fi off from the phone would cut its own connection |
 | Images: the **browser** resizes/composes to 128x128 RGB565 **big-endian**; device just blits | no image decoders on the device; exactly 32768 bytes per icon |
 | Icons are shared by id; config references ids; starter icons ship in the FS image | reuse across pages; screens work right after flashing |
 | Config is one versioned JSON, atomic write (tmp + rename), short-write detected, parse clamps ranges and ignores unknown fields | forward compatibility and crash safety |
@@ -133,7 +137,7 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
 - Writing patch scripts: never embed a literal newline inside a C string via a shell heredoc (it broke the build twice); use real files.
 
 ## 8. Debug console (USB-CDC, any baud; needs DTR; see serial gotcha)
-`help`, `status`, `wifi`, `dumpconfig`, `type <text>`, `tap <key> [mods]`, `ledhue 0|1`, `ledpause 0|1`, `led h s v mask`, `ledraw ...`, `ledclear`,
+`help`, `status`, `wifi` (state) / `wifi 0|1` (switch, not persisted), `dumpconfig`, `type <text>`, `tap <key> [mods]`, `ledhue 0|1`, `ledpause 0|1`, `led h s v mask`, `ledraw ...`, `ledclear`,
 `ledtest`, `ledprobe`, `huesweep` (labelled on the screens; they block the main loop ~30-45 s), `wipe`, `reset`.
 
 ## 9. Testing

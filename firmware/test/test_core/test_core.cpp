@@ -292,6 +292,19 @@ void test_config_clamps_and_ignores_unknown() {
   TEST_ASSERT_EQUAL(5, c.settings.brightness);
 }
 
+void test_wifi_enabled_setting_roundtrips() {
+  Config c;
+  std::string err;
+  TEST_ASSERT_TRUE(defaultConfig().settings.wifiEnabled);   // on by default
+  TEST_ASSERT_TRUE(parse("{\"settings\":{\"wifiEnabled\":false},\"pages\":[{}]}", c, err));
+  TEST_ASSERT_FALSE(c.settings.wifiEnabled);
+  JsonDocument doc;
+  writeConfig(c, doc);
+  TEST_ASSERT_FALSE(doc["settings"]["wifiEnabled"].as<bool>());
+  TEST_ASSERT_TRUE(parse("{\"pages\":[{}]}", c, err));    // absent -> default on
+  TEST_ASSERT_TRUE(c.settings.wifiEnabled);
+}
+
 void test_encoder_hold_is_dropped() {
   Config c;
   std::string err;
@@ -473,6 +486,7 @@ int main(int, char**) {
   RUN_TEST(test_default_config_roundtrip);
   RUN_TEST(test_config_rejects_bad_input);
   RUN_TEST(test_config_clamps_and_ignores_unknown);
+  RUN_TEST(test_wifi_enabled_setting_roundtrips);
   RUN_TEST(test_encoder_hold_is_dropped);
   RUN_TEST(test_color_and_icon_id);
   RUN_TEST(test_visual_hold_and_after);

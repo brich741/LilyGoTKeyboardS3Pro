@@ -297,6 +297,7 @@ bool parseConfig(JsonVariantConst src, Config& out, std::string& err) {
     st.revertMs = (uint16_t)getInt(s, "revertMs", st.revertMs, 100, 30000);
     st.activePage = (uint8_t)getInt(s, "activePage", 0, 0, kMaxPages - 1);
     if (s["ledHue"].is<bool>()) st.ledHue = s["ledHue"].as<bool>();   // absent: keep default
+    if (s["wifiEnabled"].is<bool>()) st.wifiEnabled = s["wifiEnabled"].as<bool>();
     JsonVariantConst z = s["ledZones"];
     if (z.is<JsonArrayConst>()) {
       int i = 0;
@@ -373,6 +374,7 @@ void writeConfig(const Config& cfg, JsonDocument& dst) {
   so["revertMs"] = s.revertMs;
   so["activePage"] = s.activePage;
   so["ledHue"] = s.ledHue;
+  so["wifiEnabled"] = s.wifiEnabled;
   JsonArray z = so["ledZones"].to<JsonArray>();
   for (int i = 0; i < kKeyCount; ++i) z.add(s.ledZones[i]);
 

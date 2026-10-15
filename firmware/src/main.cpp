@@ -46,6 +46,10 @@ uint8_t page = 0;
 bool forceRedraw = true;
 bool infoShown = false;
 bool infoArmed = false;    // the info screen only closes after the opening press was released
+uint32_t encPressSince = 0;   // info screen: debounce for the knob push that toggles Wi-Fi
+bool encToggled = false;
+uint32_t lastInfoPoll = 0;
+int lastClients = -1;
 uint32_t bannerUntil = 0;
 bool bannerShown = false;
 std::string bannerLabel;
@@ -129,6 +133,17 @@ void switchPage(int target, uint32_t now) {
   saveAt = now + kSaveDelayMs;
 }
 
+// The Wi-Fi screen: state, network name, password, address, client count, and what the knob does.
+void drawWifiInfo(const std::string& ssid, const std::string& pass, bool on, int clients) {
+  lastClients = clients;
+  String ip = net::ipString();
+  std::string conn = on ? std::to_string(clients) + " connected" : std::string("not running");
+  screens::panel(0, on ? TFT_GREEN : TFT_RED, on ? "Wi-Fi ON" : "Wi-Fi OFF", "Network:", ssid.c_str());
+  screens::panel(1, TFT_CYAN, "Password", pass.c_str());
+  screens::panel(2, TFT_CYAN, "Address", "http://", ip.c_str(), conn.c_str());
+  screens::panel(3, TFT_YELLOW, "Knob", on ? "Push: Wi-Fi OFF" : "Push: Wi-Fi ON", "Key/turn: close");
+}
+
 }  // namespace
 
 void setup() {
@@ -152,6 +167,7 @@ void setup() {
     core::Settings defaults;
     app::cfg.settings.apSsid = defaults.apSsid;
     app::cfg.settings.apPass = defaults.apPass;
+    app::cfg.settings.wifiEnabled = true;   // also the way back if Wi-Fi was switched off
     storage::save(app::cfg);
     screens::message(0, "Wi-Fi reset", "Release the", "encoder button");
     delay(1500);
@@ -183,6 +199,7 @@ void loop() {
   bool ledHue = false;
   uint16_t dimMinutes;
   bool drawBanner = false, clearBanner = false, showInfo = false, hideInfo = false;
+  bool wifiFlag = true;
   std::string ssid, pass;
   std::string iconNames[core::kKeyCount];
   bool doSave = false;
@@ -232,12 +249,36 @@ void loop() {
     if (infoShown) {
       // Any key press or knob turn closes the Wi-Fi info screen and is swallowed, but only after the
       // press that opened it (3 s encoder hold) has been released.
-      if (keys == 0 && encDelta == 0) infoArmed = true;
-      if (infoArmed && (keys != 0 || encDelta != 0)) {
-        infoShown = false;
-        infoArmed = false;
-        hideInfo = true;
-        for (int i = 0; i < kInputs; ++i) eng[i].reset();
+      const uint8_t encMask = tkbpro::keyMaskFromIndex((uint8_t)kEncoder);
+      if (keys == 0 && encDelta == 0) {
+        infoArmed = true;
+        encPressSince = 0;
+        encToggled = false;
+      }
+      if (infoArmed) {
+        if ((keys & ~encMask) != 0 || encDelta != 0) {   // another key or the knob turning closes it
+          infoShown = false;
+          infoArmed = false;
+          hideInfo = true;
+          for (int i = 0; i < kInputs; ++i) eng[i].reset();
+        } else if (keys & encMask) {                      // knob push toggles Wi-Fi (debounced)
+          if (!encPressSince) encPressSince = now ? now : 1;
+          if (!encToggled && now - encPressSince >= 40) {
+            encToggled = true;
+            app::cfg.settings.wifiEnabled = !app::cfg.settings.wifiEnabled;
+            net::requestWifi(app::cfg.settings.wifiEnabled);
+            savePending = true;
+            saveAt = now;
+            showInfo = true;
+            lastClients = -1;
+            ssid = app::cfg.settings.apSsid;
+            pass = app::cfg.settings.apPass;
+            wifiFlag = app::cfg.settings.wifiEnabled;
+          }
+        } else {
+          encPressSince = 0;
+          encToggled = false;
+        }
       }
     } else {
       if (encDelta != 0) switchPage((int)page + (encDelta > 0 ? 1 : -1), now);
@@ -255,8 +296,10 @@ void loop() {
         infoShown = true;
         infoArmed = false;
         showInfo = true;
+        lastClients = -1;
         ssid = app::cfg.settings.apSsid;
         pass = app::cfg.settings.apPass;
+        wifiFlag = app::cfg.settings.wifiEnabled;
       }
     }
 
@@ -298,10 +341,16 @@ void loop() {
 
   // ---- drawing (slow; no config lock held) ----
   if (showInfo) {
-    screens::message(0, "Wi-Fi", ssid.c_str());
-    screens::message(1, "Password", pass.c_str());
-    screens::message(2, "Open", net::ipString().c_str(), "in your browser");
-    screens::message(3, "Any key", "to close");
+    drawWifiInfo(ssid, pass, wifiFlag, net::clientCount());
+    lastInfoPoll = now;
+  } else if (infoShown && now - lastInfoPoll >= 1000) {   // keep the client count fresh
+    lastInfoPoll = now;
+    int c = net::clientCount();
+    if (lastClients >= 0 && c != lastClients) {
+      app::Lock l(app::cfgMtx);
+      drawWifiInfo(app::cfg.settings.apSsid, app::cfg.settings.apPass, app::cfg.settings.wifiEnabled, c);
+    }
+    lastClients = c;
   }
   if (hideInfo) forceRedraw = true;
 

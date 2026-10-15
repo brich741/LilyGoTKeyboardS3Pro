@@ -123,6 +123,7 @@ function validateConfig(c) {
   if (!int(s.holdMs, 150, 3000)) err('Hold threshold must be 150-3000 ms');
   if (!int(s.revertMs, 100, 30000)) err('Revert time must be 100-30000 ms');
   if (s.ledHue !== undefined && typeof s.ledHue !== 'boolean') err('ledHue must be true or false');
+  if (s.wifiEnabled !== undefined && typeof s.wifiEnabled !== 'boolean') err('wifiEnabled must be true or false');
   if (!Array.isArray(s.ledZones) || s.ledZones.length !== 4 || s.ledZones.some(m => !int(m, 0, 16383))) err('LED zones must be 4 masks (0-16383)');
   if (!Array.isArray(c.pages) || c.pages.length < 1 || c.pages.length > 8) { err('Need 1-8 pages'); return errs; }
   if (!int(s.activePage, 0, Math.min(7, c.pages.length - 1))) err('Active page out of range');
@@ -245,7 +246,7 @@ function mockSeedConfig() {
   return {
     version: 1,
     settings: { apSsid: 'ClaudePad', apPass: 'claudepad1', brightness: 80, ledBrightness: 40, dimMinutes: 10,
-      doubleMs: 250, holdMs: 400, revertMs: 1500, activePage: 0, ledHue: true, ledZones: DEFAULT_ZONES.slice() },
+      doubleMs: 250, holdMs: 400, revertMs: 1500, activePage: 0, ledHue: true, wifiEnabled: true, ledZones: DEFAULT_ZONES.slice() },
     icons: BUILTIN_ICONS.map(b => ({ id: b.id, name: b.name })),
     pages: [
       {
@@ -877,7 +878,8 @@ function viewSettings() {
       h('h3', { text: 'Wi-Fi access point' }),
       h('div', { class: 'notice', text: 'Changing the name or password disconnects your phone when you save. Reconnect to the new network afterwards.' }),
       textField('Wi-Fi name (1-31)', s.apSsid, v => { s.apSsid = v; }, { max: 31 }),
-      pw, h('label', { class: 'check' }, show, 'Show password')),
+      pw, h('label', { class: 'check' }, show, 'Show password'),
+      h('p', { class: 'hint', text: 'Wi-Fi can be turned off/on from the pad: hold the knob for 3 seconds to see the network name, password and address, then push the knob to switch Wi-Fi.' })),
     h('section', { class: 'card' },
       h('h3', { text: 'Display' }),
       numField('Screen brightness (5-100 %)', s.brightness, 5, 100, v => { s.brightness = v; }),

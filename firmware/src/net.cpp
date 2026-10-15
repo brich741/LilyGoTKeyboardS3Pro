@@ -22,6 +22,12 @@ const IPAddress kApIp(192, 168, 4, 1);
 WebServer server(80);
 DNSServer dns;
 
+volatile int8_t wifiCmd = -1;     // -1 none, 0 off, 1 on (consumed by the web task)
+volatile bool apOn = false;
+bool serverStarted = false;
+bool apStarted = false;
+bool captiveDhcp = false;
+
 uint8_t* uploadBuf = nullptr;
 size_t uploadLen = 0;
 bool uploadOverflow = false;
@@ -71,13 +77,14 @@ void handlePutConfig() {
   std::string err;
   if (!core::parseConfig(doc.as<JsonVariantConst>(), next, err)) return sendError(400, err.c_str());
 
-  bool apChanged;
+  bool apChanged, wifiChanged;
   uint32_t seq;
   core::Config toSave;
   {
     app::Lock l(app::cfgMtx);
     apChanged = next.settings.apSsid != app::cfg.settings.apSsid ||
                 next.settings.apPass != app::cfg.settings.apPass;
+    wifiChanged = next.settings.wifiEnabled != app::cfg.settings.wifiEnabled;
     app::cfg = next;
     app::generation = app::generation + 1;
     toSave = app::cfg;
@@ -85,12 +92,14 @@ void handlePutConfig() {
   }
   if (!storage::save(toSave, seq)) return sendError(500, "failed to write config");
   sendOk();
+  if (wifiChanged) requestWifi(next.settings.wifiEnabled);
   if (apChanged) app::restartApRequested = true;
 }
 
 void handleStatus() {
   JsonDocument d;
   d["fw"] = FW_VERSION;
+  d["wifi"] = apOn;
   {
     app::Lock l(app::cfgMtx);
     d["activePage"] = app::cfg.settings.activePage;
@@ -224,21 +233,43 @@ void handleNotFound() {
   server.send(302, "text/plain", "ClaudePad settings: http://192.168.4.1/");
 }
 
+void startAp();
+
+void applyWifi(bool on) {
+  if (on) {
+    startAp();
+    if (!serverStarted) {   // the listening socket needs the TCP/IP stack, so start it with the first AP
+      server.begin();
+      serverStarted = true;
+    }
+    apOn = apStarted;
+  } else {
+    dns.stop();
+    WiFi.softAPdisconnect(true);
+    apOn = false;
+    apStarted = false;
+  }
+}
+
 void serverTask(void*) {
   for (;;) {
-    dns.processNextRequest();
-    server.handleClient();
-    if (app::restartApRequested) {
+    int8_t cmd = __atomic_exchange_n(&wifiCmd, (int8_t)-1, __ATOMIC_ACQ_REL);
+    if (cmd >= 0) applyWifi(cmd == 1);
+    if (apOn) {
+      dns.processNextRequest();
+      server.handleClient();
+      if (app::restartApRequested) {
+        app::restartApRequested = false;
+        delay(300);   // let the HTTP response flush
+        restartAp();
+      }
+    } else {
       app::restartApRequested = false;
-      delay(300);   // let the HTTP response flush
-      restartAp();
     }
     vTaskDelay(pdMS_TO_TICKS(2));
   }
 }
 
-bool apStarted = false;
-bool captiveDhcp = false;
 int apAttempts = 0;
 
 void startAp() {
@@ -270,7 +301,12 @@ void restartAp() {
   WiFi.softAPdisconnect(true);
   delay(100);
   startAp();
+  apOn = apStarted;
 }
+
+void requestWifi(bool on) { wifiCmd = on ? 1 : 0; }
+bool wifiOn() { return apOn; }
+int clientCount() { return apOn ? (int)WiFi.softAPgetStationNum() : 0; }
 
 String ipString() { return kApIp.toString(); }
 
@@ -283,7 +319,6 @@ String debugInfo() {
 
 void begin() {
   uploadBuf = (uint8_t*)malloc(storage::kIconBytes);
-  startAp();
 
   server.on("/", HTTP_GET, handleIndex);
   server.on("/index.html", HTTP_GET, handleIndex);
@@ -308,8 +343,11 @@ void begin() {
   for (const char* path : kProbePaths) server.on(path, HTTP_ANY, handleNotFound);
   server.serveStatic("/", LittleFS, "/www/", "max-age=300");
   server.onNotFound(handleNotFound);
-  server.begin();
 
+  {   // honour the persisted on/off choice; the web task applies it
+    app::Lock l(app::cfgMtx);
+    wifiCmd = app::cfg.settings.wifiEnabled ? 1 : 0;
+  }
   xTaskCreatePinnedToCore(serverTask, "web", 8192, nullptr, 1, nullptr, 0);
 }
 

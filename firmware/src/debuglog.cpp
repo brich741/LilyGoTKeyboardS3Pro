@@ -285,6 +285,10 @@ void run(char* cmd) {
     TKeyboardS3Pro.ledShow();
     reply("ok");
   } else if (!strcmp(c, "wifi")) {
+    if (argc >= 2) {   // "wifi 0|1": switch the access point (not persisted; the knob screen persists)
+      net::requestWifi(atoi(argv[1]) != 0);
+      delay(1500);
+    }
     cdc.println(net::debugInfo());
   } else if (!strcmp(c, "dumpconfig")) {
     JsonDocument doc;

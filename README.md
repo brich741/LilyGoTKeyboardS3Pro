@@ -37,8 +37,13 @@ and again whenever you change `firmware/data/www`.
 The starter "Claude Code" page holds **Ctrl+D** while key 1 is held (the VS Code extension shows Ctrl+D). For the CLI, bind it in `~/.claude/keybindings.json`
 (`voice:pushToTalk` -> `ctrl+d`) for the CLI; confirm what the VS Code extension uses and change the key in the UI if needed.
 
+### Wi-Fi on the pad
+Hold the **knob for 3 seconds**: the four screens show Wi-Fi ON/OFF, the **network name**, the **password**, the **address** (`http://192.168.4.1`)
+and how many devices are connected. **Push the knob** to switch Wi-Fi off/on (the choice is remembered across power cycles); press any key or turn
+the knob to close the screen.
+
 ### Recovery
-- Forgot the Wi-Fi password: hold the encoder button while plugging in USB (resets SSID/password to defaults), or hold it 3 s any time to display them.
+- Forgot the Wi-Fi password or switched Wi-Fi off: hold the knob while plugging in USB (resets SSID/password to defaults and turns Wi-Fi on), or hold it 3 s any time to see them and switch Wi-Fi.
 - Factory reset is in the web UI under Backup.
 
 ## LED colours: needs the STM32 firmware update (hardware)
