@@ -58,7 +58,7 @@ The ST-Link V2 clone (firmware V2J46S7) was detected by STM32CubeProgrammer 2.20
 as well, so the pad ran from the dongle's regulator; fine for programming, but a pad that is also on USB should skip that wire):
 
 ```
-$cli = "C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammerin\STM32_Programmer_CLI.exe"
+$cli = "C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe"
 & $cli -l st                                                        # is the ST-Link visible?
 & $cli -c port=SWD freq=1800 mode=NORMAL -ob displ                  # read-only: device id, RDP (was Level 0), write protection (off)
 & $cli -c port=SWD freq=1800 mode=NORMAL -r 0x08000000 0x8000 "<full path>\stm32_factory_backup.bin"   # backup (use ONE full-path string)
