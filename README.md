@@ -4,7 +4,7 @@ Turns the T-Keyboard S3 Pro into a USB macro pad you configure from your phone, 
 
 - 4 keys with 128x128 screens, each with single / double / hold gestures, custom icons per state
 - Rotary encoder: turn to switch **pages**, push is a 5th button (hold it 3 s to show the Wi-Fi password)
-- RGB strip: per-page animation and per-key lighting over the key that is pressed (white / pink only, see below)
+- RGB strip: per-page animation and per-key colours over the key that is pressed (**real colours need a one-time STM32 firmware update, see below**)
 - Config lives on the device; the device hosts its own Wi-Fi network and web UI
 
 Start with [docs/DESIGN.md](docs/DESIGN.md) (architecture, decisions and rationale, hardware findings, open items). See also
@@ -48,22 +48,34 @@ press any key or turn the knob to close the screen. The choice lasts until the n
 - Forgot the Wi-Fi password or switched Wi-Fi off: hold the knob while plugging in USB (resets SSID/password to defaults and starts Wi-Fi for that session), or hold it 3 s any time to see them and switch Wi-Fi.
 - Factory reset is in the web UI under Backup.
 
-## LED colours: needs the STM32 firmware update (hardware)
+## Required for LED colours: update the pad's STM32 firmware (one-time, needs a programmer)
 
-Root cause: a bug in the **factory STM32 firmware** (LilyGo issue
-[T-Keyboard-S3-Pro#7](https://github.com/Xinyuan-LilyGO/T-Keyboard-S3-Pro/issues/7)). Its hue handler ORs each new
-hue into the old value instead of replacing it, so hue can never be set. We reproduced it with LilyGo's unmodified
-`RGB.ino`, a red/green/blue test, register sweeps, and Arduino-ESP32 core 3.x and 2.0.14.
+> **Heads-up:** the T-Keyboard S3 Pro ships with a bug in the firmware of its small **STM32** co-processor (the chip that drives the LEDs, keys and screen
+> selects): LED **hue cannot be set** ([LilyGo issue #7](https://github.com/Xinyuan-LilyGO/T-Keyboard-S3-Pro/issues/7)). Everything in this project works
+> without the fix **except coloured LEDs**; until you update it the strip shows a garbled pink. LilyGo published a fixed firmware (V2), but it can only be
+> installed with a small hardware programmer plugged into the pad's SWD socket. This is a one-time job (about 15 minutes) and is recoverable (SWD can always
+> reflash the chip). If you would rather not, turn **LED colors: real hue** off in the web UI Settings (or run `ledhue 0` on the serial console) to get the
+> white / pink-only mode (brightness and saturation work on the old firmware).
 
-This firmware targets the fixed STM32 firmware and sends real hues by default (`settings.ledHue = true`). The pad this was developed on has been
-updated to V2 and shows real colours. On a pad
-that still has the factory STM32 firmware the strip shows a garbled pink; switch `ledHue` off (web UI Settings, or
-the serial command `ledhue 0`) to get the white/pink-only mode (brightness and saturation work on the old firmware;
-the "rainbow" effect becomes a rotating white/pink wave).
+**What you need** (about US$5-15 in total; prices vary, these are examples, not endorsements):
 
-Fix: flash LilyGo's corrected STM32 firmware (V2, 2025-01-23) with an ST-Link over SWD; see
-[docs/STM32_UPDATE.md](docs/STM32_UPDATE.md) for the connector, pin order and steps. This project does not flash the
-STM32 itself.
+| Item | What to buy | Cheap example |
+|---|---|---|
+| SWD programmer | An **ST-LINK/V2** USB dongle (the little aluminium "mini" version, a clone is fine; it must have `SWDIO`, `SWCLK`, `GND`). Clones cost a few dollars; genuine ones cost more. | [Waveshare ST-LINK/V2 (mini), about $9](https://www.waveshare.com/product/st-link-v2-mini-stm32.htm), or search for the cheapest clone: [AliExpress](https://www.aliexpress.com/w/wholesale-st-link-v2.html), [Amazon](https://www.amazon.com/s?k=ST-Link+V2+programmer+mini) |
+| Cable | A **4-pin, 1.0 mm pitch JST-SH** cable (the "Qwiic / STEMMA QT" plug) with male Dupont pins on the other end, to go from the pad's small SWD socket to the programmer's pins. **Measure the socket before ordering**: the four slots should be about 3 mm apart end to end. | [Adafruit STEMMA QT / Qwiic JST-SH 4-pin to male headers, 150 mm, about $1](https://www.adafruit.com/products/4209) |
+| Software | **STM32CubeProgrammer** (free, needs a free ST account) | [st.com/en/development-tools/stm32cubeprog.html](https://www.st.com/en/development-tools/stm32cubeprog.html) |
+| Firmware file | LilyGo's fixed STM32 firmware: the `STM32G030F6P6_Drive_0x01 ... V2` `.hex` (the main board is address `0x01`). It is GPL-3.0, so it is not stored in this repo. | [LilyGo `firmware` folder](https://github.com/Xinyuan-LilyGO/T-Keyboard-S3-Pro/tree/stm32cubeg0-firmware-package_V1.6.2/firmware) |
+
+**How to do it** (full walkthrough with pin order, a multimeter check and the exact commands: [docs/STM32_UPDATE.md](docs/STM32_UPDATE.md)):
+
+1. Open the pad enough to see the back of the keyboard PCB. Two small 4-pin sockets sit side by side: the **right-hand one is SWD** (silkscreen `GND  +3.3V  SWCLK  SWDIO`);
+   the left one is UART, leave it.
+2. Wire the programmer: `GND` to pin 1, `SWCLK` to pin 3, `SWDIO` (printed `SWIO` on many clones) to pin 4. **Never connect a 5 V pin.** If the pad is powered over its own USB,
+   leave the programmer's 3.3 V wire off (pin 2).
+3. Plug the pad into USB (or let the programmer power it) and the programmer into your PC, then in STM32CubeProgrammer choose **ST-LINK**, port **SWD**, mode **Normal**, and **Connect**.
+   You should see an `STM32G03x` with 32 KB flash and a target voltage near 3.3 V.
+4. Back up the chip first (read `0x08000000`, size `0x8000`, save a `.bin`), then program LilyGo's `.hex` with **Verify** ticked and **Run after programming**.
+5. Unplug everything, plug the pad back into USB, and the LEDs now take real colours.
 
 Diagnostic builds used for this live in `firmware/diag` (`pio run -e rgbdemo|ledexamples|rgbcycle|rgbdemo_core2|rgbcycle_core2 -t upload`);
 flash `esp32s3` again afterwards. The serial console (`help`, `ledprobe`, `huesweep`, `type`, `tap`, `wipe`) is on the pad's

@@ -8,10 +8,13 @@ Risk: low. SWD programming can always reflash the chip, so a bad flash is recove
 Do not use the UART route unless you have to (it needs BOOT0 handling).
 
 ## What you need
-- **ST-Link V2** (genuine or clone) with SWD pins `SWDIO`, `SWCLK`, `GND` (a "3V3" pin is optional, see step 4).
+- **ST-Link V2** (genuine or clone) with SWD pins `SWDIO`, `SWCLK`, `GND` (a "3V3" pin is optional, see step 4). Cheap examples:
+  [Waveshare ST-LINK/V2 (mini), about $9](https://www.waveshare.com/product/st-link-v2-mini-stm32.htm); clones on
+  [AliExpress](https://www.aliexpress.com/w/wholesale-st-link-v2.html) or [Amazon](https://www.amazon.com/s?k=ST-Link+V2+programmer+mini).
 - A cable from the pad's SWD connector to the ST-Link. The pad has two small 4-pin connectors on the **back of the
   keyboard PCB**; they look like 1.0 mm-pitch JST-SH (the same plug as Qwiic / STEMMA QT cables). Measure the
-  pitch before buying anything. Cutting the end off a Qwiic cable and using Dupont crimps/solder works.
+  pitch before buying anything. Cutting the end off a Qwiic cable and using Dupont crimps/solder works. Cheap example:
+  [Adafruit STEMMA QT / Qwiic JST-SH 4-pin to male headers, 150 mm, about $1](https://www.adafruit.com/products/4209).
 - A PC with **STM32CubeProgrammer** (free from st.com, needs an ST account) and the ST-Link driver it installs.
 - The firmware file: `tools/stm32/stm32g030_0x01_V2_202501231722.hex`
   (sha256 `71d820b2d5c138e3440b83fea025c20061832b8621f58c91bb74ba5087c64bf7`).
