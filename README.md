@@ -24,7 +24,8 @@ pio run -e esp32s3 -t uploadfs     # upload the web UI (data/www) to the device
 
 The firmware runs USB in TinyUSB mode (HID keyboard + serial). If upload cannot find the port, put the board in
 download mode: hold **BOOT**, tap **RESET**, release **BOOT**, then upload again. Run `uploadfs` once after the first flash
-and again whenever you change `firmware/data/www`.
+and again whenever you change `firmware/data/www`. **On a pad you have customised, update the web UI with `tools/uploadfs_keep.py` (run it with PlatformIO's
+python: `%USERPROFILE%/.platformio/penv/Scripts/python.exe tools/uploadfs_keep.py`)**: plain `uploadfs` erases your saved settings and uploaded icons.
 
 ## Use
 

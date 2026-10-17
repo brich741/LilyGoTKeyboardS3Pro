@@ -200,6 +200,30 @@ void test_runner_shared_modifier_refcount() {
   TEST_ASSERT_EQUAL_STRING("u4", r.log[0].c_str());
 }
 
+void test_modifier_only_combo_ctrl_win() {
+  // "Ctrl + Win" with no regular key must parse and send both modifiers, then release them in reverse.
+  JsonDocument doc;
+  TEST_ASSERT_TRUE(deserializeJson(doc, "[{\"t\":\"key\",\"mode\":\"tap\",\"mods\":[\"ctrl\",\"gui\"],\"key\":\"\"}]") == DeserializationError::Ok);
+  Steps steps;
+  std::string err;
+  TEST_ASSERT_TRUE_MESSAGE(parseSteps(doc.as<JsonVariantConst>(), steps, err), err.c_str());
+  TEST_ASSERT_EQUAL(1, (int)steps.size());
+  TEST_ASSERT_EQUAL_UINT8(MOD_CTRL | MOD_GUI, steps[0].mods);
+  TEST_ASSERT_EQUAL_UINT8(0, steps[0].key);
+
+  Rec r;
+  StepRunner run(r);
+  run.run(steps);
+  std::vector<std::string> want = {"d224", "d227", "u227", "u224"};   // Ctrl, Win down; Win, Ctrl up
+  TEST_ASSERT_TRUE(r.log == want);
+  TEST_ASSERT_EQUAL(0, run.heldCount());
+
+  // A step with neither key nor modifiers is still rejected.
+  JsonDocument bad;
+  TEST_ASSERT_TRUE(deserializeJson(bad, "[{\"t\":\"key\",\"mods\":[],\"key\":\"\"}]") == DeserializationError::Ok);
+  TEST_ASSERT_FALSE(parseSteps(bad.as<JsonVariantConst>(), steps, err));
+}
+
 struct Abortable : Rec {
   int typed = 0;
   bool stop = false;
@@ -484,6 +508,7 @@ int main(int, char**) {
   RUN_TEST(test_runner_shared_modifier_refcount);
   RUN_TEST(test_runner_text_and_media);
   RUN_TEST(test_runner_abort_stops_text_and_remaining_steps);
+  RUN_TEST(test_modifier_only_combo_ctrl_win);
   RUN_TEST(test_default_config_roundtrip);
   RUN_TEST(test_config_rejects_bad_input);
   RUN_TEST(test_config_clamps_and_ignores_unknown);

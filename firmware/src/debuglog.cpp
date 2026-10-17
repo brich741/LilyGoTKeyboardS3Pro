@@ -290,6 +290,31 @@ void run(char* cmd) {
       delay(1500);
     }
     cdc.println(net::debugInfo());
+  } else if (!strcmp(c, "dumpicon") && argc >= 2) {
+    // Print an icon file as hex between BEGIN/END markers (used to back up custom icons before a filesystem flash).
+    std::string id = argv[1];
+    uint8_t* buf = core::validIconId(id) ? (uint8_t*)malloc(storage::kIconBytes) : nullptr;
+    if (!buf) {
+      reply("bad id or out of memory");
+    } else if (!storage::readIcon(id, buf)) {
+      reply("no such icon");
+      free(buf);
+    } else {
+      cdc.printf("ICON %s BEGIN\n", id.c_str());
+      static const char* hex = "0123456789abcdef";
+      char line[129];
+      for (size_t i = 0; i < storage::kIconBytes; i += 64) {
+        for (int k = 0; k < 64; ++k) {
+          line[2 * k] = hex[buf[i + k] >> 4];
+          line[2 * k + 1] = hex[buf[i + k] & 15];
+        }
+        line[128] = 0;
+        cdc.println(line);
+        delay(4);
+      }
+      cdc.println("ICON END");
+      free(buf);
+    }
   } else if (!strcmp(c, "dumpconfig")) {
     JsonDocument doc;
     {

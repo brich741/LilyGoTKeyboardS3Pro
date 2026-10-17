@@ -15,8 +15,11 @@ Vocabulary: `docs/CONTEXT.md`. Keep these docs current when behaviour or decisio
 - Host tests: `python tools/host_tests.py` (no system compiler needed)
 
 ## Rules learned the hard way
-- `uploadfs` **erases saved config and uploaded icons**; ask before doing it if the user may have customised the pad.
-- Opening/closing the pad's serial port can leave it in ROM download mode (dark screens): reset with esptool `--after hard-reset` (see DESIGN.md section 6).
+- Plain `uploadfs` **erases saved config and uploaded icons**. The user DOES customise the pad through the phone UI, so update the web UI with
+  `tools/uploadfs_keep.py` (run with PlatformIO's python: `%USERPROFILE%/.platformio/penv/Scripts/python.exe tools/uploadfs_keep.py`), which backs up the config and
+  custom icons over the serial console, flashes, restores and verifies. Never run bare `uploadfs` on the user's pad.
+- Opening/closing the pad's serial port can leave it in ROM download mode (dark screens): reset with esptool `--after hard-reset`, run with PlatformIO's python
+  (`%USERPROFILE%/.platformio/penv/Scripts/python.exe`; other interpreters lack `rich_click`). See DESIGN.md section 6.
 - Lock order: `cfgMtx` before `hwMtx`; all I2C/SPI under `hwMtx`.
 - Never write a literal newline into a C string through a shell heredoc/patch script; edit files with real file tools.
 - The user's STM32 co-processor now runs LilyGo's V2 firmware (hue bug fixed, flashed 2026-10-17 over SWD; backup in tools/stm32/, git-ignored). Never flash the STM32 from the ESP32 side. Do not commit the GPL hex or the factory backup.

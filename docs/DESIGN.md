@@ -112,7 +112,8 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
   interface 0 (the HID interface) and the keyboard showed "Error".
 - **Serial gotcha:** opening/closing the pad's COM port from a terminal toggles DTR/RTS and can drop the ESP32 into ROM **download mode**
   (it then enumerates as "USB JTAG/serial debug unit", screens dark). Recover with
-  `python ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32s3 --port COMx --after hard-reset chip-id` or replug.
+  `~/.platformio/penv/Scripts/python.exe ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32s3 --port COMx --after hard-reset chip-id` (that interpreter has the
+  needed `rich_click`; others do not) or replug.
 - Typed text assumes a **US layout, ASCII only**. Key combos use HID usages and work on any layout.
 
 ## 7. Toolchain gotchas
@@ -120,8 +121,10 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
 - Platform: pioarduino stable (Arduino-ESP32 3.3.x). `lib_ldf_mode = deep+` **plus** explicit `-I` for the framework `FS` and `Network` libraries
   (the library finder skips conditional includes, so USB/WiFi/LittleFS failed to compile otherwise).
 - Partition `spiffs` (type spiffs) must keep that **name**: Arduino `LittleFS.begin()` mounts label `spiffs`. 3 MB app + ~12.9 MB filesystem.
-- **`pio run -t uploadfs` erases the filesystem, including saved config and uploaded icons.** Export a backup from the UI first.
-  Starter icons come back with it (they live in `data/icons`).
+- **`pio run -t uploadfs` erases the filesystem, including saved config and uploaded icons.** Use `tools/uploadfs_keep.py` instead: it reads the config and every
+  custom icon off the pad (`dumpconfig`, `dumpicon <id>` over the USB console), stages them into `firmware/data/` (removed afterwards; `config.json` is git-ignored),
+  runs `uploadfs`, verifies the config is byte-identical and the icons exist, then resets the pad. Last backup kept in `.padbackup/` (git-ignored).
+  Starter icons ship with every FS image (`data/icons`). Possible future improvement: embed the UI in the firmware binary so UI changes never touch the filesystem.
 - Run PlatformIO from PowerShell if Git Bash prints "MSys/Mingw is not supported".
 - No host C++ compiler here: `python tools/host_tests.py` bootstraps zig (venv in `.hosttest/`) and runs the Unity tests. `pio test -e native` works
   only if gcc/clang is installed.
@@ -130,7 +133,7 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
 - Writing patch scripts: never embed a literal newline inside a C string via a shell heredoc (it broke the build twice); use real files.
 
 ## 8. Debug console (USB-CDC, any baud; needs DTR; see serial gotcha)
-`help`, `status`, `wifi` (state) / `wifi 0|1` (switch for this session), `dumpconfig`, `type <text>`, `tap <key> [mods]`, `ledhue 0|1`, `ledpause 0|1`, `led h s v mask`, `ledraw ...`, `ledclear`,
+`help`, `status`, `wifi` (state) / `wifi 0|1` (switch for this session), `dumpconfig`, `dumpicon <id>` (hex dump of an icon), `type <text>`, `tap <key> [mods]`, `ledhue 0|1`, `ledpause 0|1`, `led h s v mask`, `ledraw ...`, `ledclear`,
 `ledtest`, `ledprobe`, `huesweep` (labelled on the screens; they block the main loop ~30-45 s), `wipe`, `reset`.
 
 ## 9. Testing

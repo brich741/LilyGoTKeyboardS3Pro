@@ -14,6 +14,7 @@ const ICON_BYTES = ICON_SIZE * ICON_SIZE * 2;
 const ID_RE = /^[a-z0-9_-]{1,24}$/;
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const MODS = ['ctrl', 'shift', 'alt', 'gui'];
+const MOD_LABEL = { ctrl: 'Ctrl', shift: 'Shift', alt: 'Alt', gui: 'Win' };   // 'gui' is the config/HID name for the Windows key
 const MEDIA_KEYS = ['volup', 'voldown', 'mute', 'playpause', 'next', 'prev', 'stop'];
 const EFFECTS = ['off', 'solid', 'breathe', 'rainbow', 'chase', 'sparkle'];
 const KEY_GROUPS = (() => {
@@ -727,22 +728,35 @@ function stepList(steps, rerender) {
 
 function stepBody(s) {
   if (s.t === 'key') {
+    // Plain-language preview, e.g. "Sends: Ctrl + Win" / "Holds down: Alt + k".
+    const preview = h('div', { class: 'hint' });
+    const updatePreview = () => {
+      const parts = MODS.filter(m => s.mods.includes(m)).map(m => MOD_LABEL[m]);
+      if (s.key) parts.push(s.key);
+      const verb = { tap: 'Sends', down: 'Holds down', up: 'Releases' }[s.mode] || 'Sends';
+      preview.textContent = parts.length ? `${verb}: ${parts.join(' + ')}` : 'Pick a modifier or a key';
+    };
     const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'Modifiers' }, MODS.map(m => {
-      const b = h('button', { type: 'button', class: 'chip', 'aria-pressed': String(s.mods.includes(m)), text: m,
+      const b = h('button', { type: 'button', class: 'chip', 'aria-pressed': String(s.mods.includes(m)), text: MOD_LABEL[m],
+        title: m === 'gui' ? 'Windows key (Command on a Mac)' : MOD_LABEL[m],
+        'aria-label': m === 'gui' ? 'Win (Windows key)' : MOD_LABEL[m],
         onClick: () => {
           s.mods = s.mods.includes(m) ? s.mods.filter(x => x !== m) : MODS.filter(x => x === m || s.mods.includes(x));
-          b.setAttribute('aria-pressed', String(s.mods.includes(m))); markDirty();
+          b.setAttribute('aria-pressed', String(s.mods.includes(m))); markDirty(); updatePreview();
         } });
       return b;
     }));
-    const keySel = h('select', { 'aria-label': 'Key', onChange: () => { s.key = keySel.value; markDirty(); } },
+    const keySel = h('select', { 'aria-label': 'Key', onChange: () => { s.key = keySel.value; markDirty(); updatePreview(); } },
       h('option', { value: '', text: '(none - modifiers only)' }),
       KEY_GROUPS.map(([g, names]) => h('optgroup', { label: g }, names.map(n => h('option', { value: n, text: n })))));
     keySel.value = s.key;
+    updatePreview();
     return h('div', null,
-      field('Mode', selectEl([['tap', 'tap (press + release)'], ['down', 'down (hold until "up")'], ['up', 'up (release)']], s.mode, v => { s.mode = v; markDirty(); })),
-      h('div', { class: 'lbl small muted', text: 'Modifiers' }), chips,
-      field('Key', keySel));
+      field('Mode', selectEl([['tap', 'tap (press + release)'], ['down', 'down (hold until "up")'], ['up', 'up (release)']], s.mode, v => { s.mode = v; markDirty(); updatePreview(); })),
+      h('div', { class: 'lbl small muted', text: 'Modifiers (Win = the Windows key)' }), chips,
+      field('Key', keySel),
+      h('div', { class: 'hint', text: 'For a combo made only of modifiers, such as Ctrl + Win, tick them and set Key to "(none - modifiers only)".' }),
+      preview);
   }
   if (s.t === 'text') {
     const inp = h('input', { type: 'text', value: escapeText(s.text), maxlength: MAX_TEXT, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Text to type',

@@ -7,3 +7,5 @@ compile_commands.json
 tools/stm32/*.hex
 .hosttest/
 tools/stm32/*.bin
+firmware/data/config.json
+.padbackup/
