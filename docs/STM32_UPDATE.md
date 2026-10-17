@@ -52,3 +52,17 @@ Do not use the UART route unless you have to (it needs BOOT0 handling).
 - *Cannot connect:* swap SWCLK/SWDIO, re-check GND, try **Mode: Hot plug**, add the 3.3V wire.
 - *Pad dead after flashing:* reconnect the ST-Link and flash again; SWD is independent of the firmware.
 - *Want the old firmware back:* flash `stm32_factory_backup.bin` at `0x08000000` from step 6.
+
+## What was actually run (2026-10-17, works from the command line, PowerShell)
+The ST-Link V2 clone (firmware V2J46S7) was detected by STM32CubeProgrammer 2.20. With the pad plugged into the ST-Link wires (GND, SWCLK, SWDIO, and in this case +3.3V
+as well, so the pad ran from the dongle's regulator; fine for programming, but a pad that is also on USB should skip that wire):
+
+```
+$cli = "C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammerin\STM32_Programmer_CLI.exe"
+& $cli -l st                                                        # is the ST-Link visible?
+& $cli -c port=SWD freq=1800 mode=NORMAL -ob displ                  # read-only: device id, RDP (was Level 0), write protection (off)
+& $cli -c port=SWD freq=1800 mode=NORMAL -r 0x08000000 0x8000 "<full path>\stm32_factory_backup.bin"   # backup (use ONE full-path string)
+& $cli -c port=SWD freq=1800 mode=NORMAL -w "<full path>\stm32g030_0x01_V2_202501231722.hex" -v -rst     # program + verify + reset
+```
+Result: "Download verified successfully", then software reset. Afterwards power-cycle the pad (USB), because the ESP32 side sets the STM32 into LED "free" mode
+only once at start-up.

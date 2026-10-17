@@ -4,7 +4,7 @@ Read this before changing the firmware, so past decisions and dead ends are not 
 Companion docs: [CONFIG.md](CONFIG.md) (config/API contract), [CONTEXT.md](CONTEXT.md) (vocabulary),
 [STM32_UPDATE.md](STM32_UPDATE.md) (flashing the co-processor), [../README.md](../README.md) (build/use).
 
-Status snapshot: 2026-10-15. See "Open items" at the end for what is unfinished.
+Status snapshot: 2026-10-17 (the user's pad now runs LilyGo's fixed STM32 V2 firmware; real LED colours work). See "Open items" at the end for what is unfinished.
 
 ## 1. What this is
 A USB macro keyboard for the LilyGo **T-Keyboard S3 Pro** that the owner configures **from a phone, without recompiling**.
@@ -83,7 +83,8 @@ Layers (`firmware/`):
     *clear* wipes the **whole** buffer (and shows); *show* latches. So: paint every colour group, then **show once**; never clear between groups
     (that was a real bug: red zone erased, flickering intermediate frames).
   - **Factory firmware V1 has a hue bug** (LilyGo issue #7): hue is OR-ed into the old value so it can never be set; hue values
-    above 359 render magenta-pink. Brightness and saturation work. Fixed in V2 (hex in LilyGo's repo, address 0x01).
+    above 359 render magenta-pink. Brightness and saturation work. Fixed in V2 (hex in LilyGo's repo, address 0x01); **the user's pad has V2 since 2026-10-17**.
+    Other pads (or after a factory-restore) may still be V1: use `settings.ledHue=false` for those.
     We proved it with LilyGo's stock `RGB.ino`, register sweeps, and Arduino core 3.x **and** 2.0.14 (core version is not the cause).
   - SWD connector X1 on the back of the keyboard PCB: pins `1 GND, 2 +3.3V, 3 SWCLK, 4 SWDIO`; UART X2: `RX, TX, +3.3V, GND`.
     SWCLK shares the BOOT0 pin. See STM32_UPDATE.md. (Connector looks like 1.0 mm JST-SH; schematic part `AFC10-S04PCA-00`.)
@@ -139,9 +140,10 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
 - On device checklist: icons on 4 screens, each key's single/double/hold reach the PC, push-to-talk green/red, encoder pages wrap, no stuck keys after
   page switch/unplug, config survives reboot, Wi-Fi AP visible, UI loads on a phone, LED zones calibrate, colours (after STM32 update).
 
-## 10. Open items (as of 2026-10-15)
-1. **Flash the STM32 with LilyGo's V2 hex** (ST-Link clone + SWD cable arriving 2026-10-16). Then run `huesweep`/`ledtest`, confirm real colours, run
-   "LED calibration" in the UI. Walkthrough: STM32_UPDATE.md. `ledHue` already defaults to true.
+## 10. Open items (as of 2026-10-17)
+1. ~~Flash the STM32 with LilyGo's V2 hex~~ **Done 2026-10-17** with an ST-Link V2 clone over SWD (STM32CubeProgrammer CLI; chip reported
+   STM32G03x, 32 KB flash, RDP level 0). Factory image saved to `tools/stm32/stm32_factory_backup.bin` (git-ignored). Programming verified,
+   LEDs confirmed working by the user. Exact commands are in STM32_UPDATE.md ("What was actually run").
 2. **Phone web UI has not been tried on the real pad.** The AP is verified from a PC (SSID `ClaudePad`, WPA2, 2.4 GHz channel 1, strong signal).
    The user's phone did not list it at first (phone-side cache / 5 GHz-only setting were the suspects). Needs: join, open 192.168.4.1, load config, edit, save, upload an icon.
 3. Confirm what the **VS Code extension** uses for voice (user saw Ctrl+D). Default hold step is Ctrl+D; may need to be a single-press toggle instead.

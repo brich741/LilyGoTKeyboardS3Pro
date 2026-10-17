@@ -54,7 +54,8 @@ Root cause: a bug in the **factory STM32 firmware** (LilyGo issue
 hue into the old value instead of replacing it, so hue can never be set. We reproduced it with LilyGo's unmodified
 `RGB.ino`, a red/green/blue test, register sweeps, and Arduino-ESP32 core 3.x and 2.0.14.
 
-This firmware targets the fixed STM32 firmware and sends real hues by default (`settings.ledHue = true`). On a pad
+This firmware targets the fixed STM32 firmware and sends real hues by default (`settings.ledHue = true`). The pad this was developed on has been
+updated to V2 and shows real colours. On a pad
 that still has the factory STM32 firmware the strip shows a garbled pink; switch `ledHue` off (web UI Settings, or
 the serial command `ledhue 0`) to get the white/pink-only mode (brightness and saturation work on the old firmware;
 the "rainbow" effect becomes a rotating white/pink wave).

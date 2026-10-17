@@ -19,5 +19,5 @@ Vocabulary: `docs/CONTEXT.md`. Keep these docs current when behaviour or decisio
 - Opening/closing the pad's serial port can leave it in ROM download mode (dark screens): reset with esptool `--after hard-reset` (see DESIGN.md section 6).
 - Lock order: `cfgMtx` before `hwMtx`; all I2C/SPI under `hwMtx`.
 - Never write a literal newline into a C string through a shell heredoc/patch script; edit files with real file tools.
-- The STM32 co-processor firmware is the factory V1 until the user flashes LilyGo's V2 (hue bug). Do not flash the STM32 from the ESP32. Do not commit the GPL hex.
+- The user's STM32 co-processor now runs LilyGo's V2 firmware (hue bug fixed, flashed 2026-10-17 over SWD; backup in tools/stm32/, git-ignored). Never flash the STM32 from the ESP32 side. Do not commit the GPL hex or the factory backup.
 - Commit only when asked; commit messages end with the Co-Authored-By trailer from the session reminder.
