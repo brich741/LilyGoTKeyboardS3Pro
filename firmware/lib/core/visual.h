@@ -23,7 +23,9 @@ class KeyVisual {
   // Reset to idle with the given key config (call on page switch / config change).
   void reset(const KeyCfg& key);
 
-  void onSingle(const KeyCfg& key, uint32_t now, uint16_t revertMs);
+  // Returns the gesture whose steps to run. With key.toggle present, presses alternate
+  // single ("on", look stays until the next press) / toggle ("off", back to idle or its own look).
+  const Gesture& onSingle(const KeyCfg& key, uint32_t now, uint16_t revertMs);
   void onDouble(const KeyCfg& key, uint32_t now, uint16_t revertMs);
   void onHoldStart(const KeyCfg& key);
   void onHoldEnd(const KeyCfg& key, uint32_t now, uint16_t revertMs);
@@ -38,6 +40,7 @@ class KeyVisual {
   KeyLook resolve(const KeyCfg& key, const Visual& v) const;
 
   KeyLook look_;
+  bool on_ = false;       // toggle state
   bool timed_ = false;
   uint32_t until_ = 0;
 };

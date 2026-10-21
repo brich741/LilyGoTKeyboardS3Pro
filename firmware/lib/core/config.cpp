@@ -178,6 +178,7 @@ bool parseKey(JsonVariantConst src, KeyCfg& k, std::string& err) {
   if (!parseVisual(src["idle"], k.idle, err)) return false;
   if (!parseGesture(src["single"], k.single, err)) return false;
   if (!parseGesture(src["double"], k.dbl, err)) return false;
+  if (!parseGesture(src["toggle"], k.toggle, err)) return false;
   if (!parseHold(src["hold"], k.hold, err)) return false;
   return true;
 }
@@ -232,6 +233,11 @@ void writeKey(const KeyCfg& k, JsonObject o) {
     writeSteps(k.dbl.steps, g["steps"].to<JsonArray>());
     writeVisual(k.dbl.vis, g);
     if (k.dbl.ms) g["ms"] = k.dbl.ms;
+  }
+  if (k.toggle.present) {
+    JsonObject g = o["toggle"].to<JsonObject>();
+    writeSteps(k.toggle.steps, g["steps"].to<JsonArray>());
+    writeVisual(k.toggle.vis, g);
   }
   if (k.hold.present) {
     JsonObject h = o["hold"].to<JsonObject>();
@@ -295,6 +301,7 @@ bool parseConfig(JsonVariantConst src, Config& out, std::string& err) {
     st.doubleMs = (uint16_t)getInt(s, "doubleMs", st.doubleMs, 100, 1000);
     st.holdMs = (uint16_t)getInt(s, "holdMs", st.holdMs, 150, 3000);
     st.revertMs = (uint16_t)getInt(s, "revertMs", st.revertMs, 100, 30000);
+    st.tapMs = (uint16_t)getInt(s, "tapMs", st.tapMs, 10, 1000);
     st.activePage = (uint8_t)getInt(s, "activePage", 0, 0, kMaxPages - 1);
     if (s["ledHue"].is<bool>()) st.ledHue = s["ledHue"].as<bool>();   // absent: keep default
     if (s["wifiAtBoot"].is<bool>()) st.wifiAtBoot = s["wifiAtBoot"].as<bool>();
@@ -372,6 +379,7 @@ void writeConfig(const Config& cfg, JsonDocument& dst) {
   so["doubleMs"] = s.doubleMs;
   so["holdMs"] = s.holdMs;
   so["revertMs"] = s.revertMs;
+  so["tapMs"] = s.tapMs;
   so["activePage"] = s.activePage;
   so["ledHue"] = s.ledHue;
   so["wifiAtBoot"] = s.wifiAtBoot;

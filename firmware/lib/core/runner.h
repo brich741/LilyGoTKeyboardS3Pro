@@ -33,7 +33,12 @@ class StepRunner {
 
   int heldCount() const;
 
+  // How long a tap holds its key down. Some apps (hotkey/dictation tools that poll key state)
+  // miss the 10 ms default of the old firmware; a human press lasts ~80 ms.
+  void setTapMs(uint16_t ms) { tapMs_ = ms; }
+
  private:
+  uint16_t tapMs_ = 60;
   void press(uint8_t usage);
   void release(uint8_t usage);
 

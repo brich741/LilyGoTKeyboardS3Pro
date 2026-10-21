@@ -25,6 +25,7 @@ volatile uint32_t redrawGeneration = 1;
 volatile uint32_t requestedPage = UINT32_MAX;
 volatile bool restartApRequested = false;
 volatile bool factoryResetRequested = false;
+Diag diag = {};
 }  // namespace app
 
 namespace {
@@ -90,11 +91,12 @@ void dispatch(int i, core::GEvent ev, uint32_t now) {
   const core::PageCfg& p = app::cfg.pages[page];
   const core::KeyCfg& k = keyCfg(p, i);
   uint16_t revert = app::cfg.settings.revertMs;
+  if (ev == core::GEvent::Single || ev == core::GEvent::Double || ev == core::GEvent::HoldStart)
+    app::diag.events[i] = app::diag.events[i] + 1;
   switch (ev) {
     case core::GEvent::Single:
       if (!k.single.present) break;
-      actions::enqueue(i, k.single.steps, true);
-      vis[i].onSingle(k, now, revert);
+      actions::enqueue(i, vis[i].onSingle(k, now, revert).steps, true);
       break;
     case core::GEvent::Double:
       if (!k.dbl.present) break;
@@ -187,12 +189,23 @@ void setup() {
 
 void loop() {
   uint32_t now = millis();
+  static uint32_t prevLoop = 0;
+  static uint8_t prevKeys = 0;
+  if (prevLoop && now - prevLoop > app::diag.maxLoopMs) app::diag.maxLoopMs = now - prevLoop;
+  prevLoop = now;
 
   {
     app::Lock hw(app::hwMtx);
     TKeyboardS3Pro.update();
   }
+  uint32_t readMs = millis() - now;
+  if (readMs > app::diag.maxReadMs) app::diag.maxReadMs = readMs;
   uint8_t keys = TKeyboardS3Pro.keyState();
+  for (int i = 0; i < kInputs; ++i) {
+    uint8_t m = tkbpro::keyMaskFromIndex((uint8_t)i);
+    if ((keys & m) && !(prevKeys & m)) app::diag.edges[i] = app::diag.edges[i] + 1;
+  }
+  prevKeys = keys;
   long encDelta = TKeyboardS3Pro.encoder.delta();
 
   core::KeyLook looks[core::kKeyCount];
@@ -220,6 +233,7 @@ void loop() {
       app::cfg.settings.activePage = page;
       for (int i = 0; i < kInputs; ++i) eng[i].reset();
       actions::releaseAll();
+      actions::setTapMs(app::cfg.settings.tapMs);
       configureEngines();
       resetVisuals();
       screenBrightness = app::cfg.settings.brightness;

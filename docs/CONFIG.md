@@ -16,6 +16,7 @@ Single source of truth shared by the firmware (`firmware/lib/core`) and the web 
     "doubleMs": 250,                // double-press window
     "holdMs": 400,                  // hold threshold
     "revertMs": 1500,               // default after-hold / flash duration
+    "tapMs": 60,                    // 10-1000: how long a "tap" key step holds its key down (was a fixed 10 ms; apps that poll key state, e.g. dictation hotkeys, missed that)
     "activePage": 0,
     "wifiAtBoot": false,            // start the access point at power-up (default false); the knob (hold 3 s, push) toggles Wi-Fi for the session only
     "ledHue": true,                 // default true = real LED hues (needs LilyGo's fixed STM32 firmware); false = controller ignores hue, white/pink only
@@ -40,6 +41,7 @@ Single source of truth shared by the firmware (`firmware/lib/core`) and the web 
   "idle":   { "icon": "mic-red", "color": "#ff0000" },   // icon id ("" = black) ; LED color ("" = none)
   "single": Gesture,    // optional
   "double": Gesture,    // optional
+  "toggle": Gesture,    // optional; needs "single". Makes single presses alternate (see below)
   "hold":   HoldGesture // optional
 }
 ```
@@ -51,6 +53,8 @@ Single source of truth shared by the firmware (`firmware/lib/core`) and the web 
 - `start` runs when the hold threshold is crossed, visuals `icon/color` are shown while the button is down.
 - `end` runs on release. Afterwards any key still held by the key's steps is **automatically released**.
 - `after` (optional) is shown after release for `ms` (0 = `revertMs`), then back to idle.
+
+**Toggle:** when `toggle` is present, single presses alternate. Press 1 runs `single.steps` and shows `single` icon/color; press 2 runs `toggle.steps` and shows `toggle` icon/color (absent = idle look); and so on. Both looks are sticky (`ms` is ignored) until the next press. State is not persisted: it resets to the first state on page switch, config change and reboot. Double and hold are unaffected.
 
 A key whose `hold` is absent treats a long press as an ordinary single press. `single` waits for a double press only if `double` is present.
 

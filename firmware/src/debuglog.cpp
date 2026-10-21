@@ -205,7 +205,9 @@ void hueSweep() {
 void help() {
   reply("commands:");
   reply("  status                      usb/fs/config summary");
-  reply("  type <text>                 send text over USB HID");
+  reply("  keys [reset]                presses seen / events / jobs / loop timing (find lost presses)");
+  reply("  usb                         bus suspend/resume/wakeup counters");
+  reply("  type <text>                send text over USB HID");
   reply("  tap <key> [mods]            e.g. tap d gui   |  tap f13");
   reply("  ledpause 0|1                stop/resume the LED task (use before led tests)");
   reply("  led <h> <s> <v> <mask>      library setLeds(): h 0-360, s/v 0-100, mask hex like 0x7");
@@ -239,6 +241,24 @@ void run(char* cmd) {
                (unsigned)app::cfg.settings.activePage, (unsigned)app::cfg.icons.size());
     for (auto& i : app::cfg.icons)
       cdc.printf("  icon %s file=%s\n", i.id.c_str(), storage::iconExists(i.id) ? "yes" : "MISSING");
+  } else if (!strcmp(c, "usb")) {
+    actions::UsbStats u = actions::usbStats();
+    cdc.printf("usb: %s now; suspends %u, resumes %u, wake-on-press %u (failed %u)\n",
+               u.suspendedNow ? "SUSPENDED" : "active", (unsigned)u.suspends, (unsigned)u.resumes,
+               (unsigned)u.wakeups, (unsigned)u.wakeFails);
+  } else if (!strcmp(c, "keys")) {
+    if (argc >= 2 && !strcmp(argv[1], "reset")) {
+      for (int i = 0; i < 5; ++i) app::diag.edges[i] = app::diag.events[i] = 0;
+      app::diag.maxLoopMs = app::diag.maxReadMs = 0;
+    }
+    cdc.printf("keys: presses seen   %u %u %u %u enc %u\n", (unsigned)app::diag.edges[0], (unsigned)app::diag.edges[1],
+               (unsigned)app::diag.edges[2], (unsigned)app::diag.edges[3], (unsigned)app::diag.edges[4]);
+    cdc.printf("keys: events fired   %u %u %u %u enc %u\n", (unsigned)app::diag.events[0], (unsigned)app::diag.events[1],
+               (unsigned)app::diag.events[2], (unsigned)app::diag.events[3], (unsigned)app::diag.events[4]);
+    actions::JobStats j = actions::jobStats();
+    cdc.printf("keys: jobs queued %u dropped %u superseded %u ran %u\n", (unsigned)j.queued, (unsigned)j.dropped,
+               (unsigned)j.superseded, (unsigned)j.ran);
+    cdc.printf("keys: slowest loop %u ms, slowest key read %u ms\n", (unsigned)app::diag.maxLoopMs, (unsigned)app::diag.maxReadMs);
   } else if (!strcmp(c, "type") && argc >= 2) {
     core::Step s;
     s.type = core::Step::Text;

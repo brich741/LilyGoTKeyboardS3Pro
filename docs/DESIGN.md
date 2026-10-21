@@ -114,6 +114,9 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
   (it then enumerates as "USB JTAG/serial debug unit", screens dark). Recover with
   `~/.platformio/penv/Scripts/python.exe ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32s3 --port COMx --after hard-reset chip-id` (that interpreter has the
   needed `rich_click`; others do not) or replug.
+- **Tap length matters (2026-10-20):** taps used to hold the key down for only 10 ms. Windows received every press, but a dictation hotkey tool (Whisper Local, Ctrl+Win start / Ctrl stop)
+  reacted to only ~half of them; a human press lasts ~80 ms. Now `settings.tapMs` (default 60) holds the key down. Diagnosed with a low-level keyboard hook on the PC plus the `keys`
+  counters: the pad detected and sent 100% of presses, USB never suspended (`usb`), and 165/165 console-injected taps arrived with 2-4 ms latency. Not a USB-suspend problem; remote wakeup was tried and reverted.
 - Typed text assumes a **US layout, ASCII only**. Key combos use HID usages and work on any layout.
 
 ## 7. Toolchain gotchas
@@ -134,6 +137,7 @@ Goal: joining `ClaudePad` should take the user to the UI without typing a URL. H
 
 ## 8. Debug console (USB-CDC, any baud; needs DTR; see serial gotcha)
 `help`, `status`, `wifi` (state) / `wifi 0|1` (switch for this session), `dumpconfig`, `dumpicon <id>` (hex dump of an icon), `type <text>`, `tap <key> [mods]`, `ledhue 0|1`, `ledpause 0|1`, `led h s v mask`, `ledraw ...`, `ledclear`,
+`keys [reset]` (presses seen / events fired / jobs queued-dropped-superseded / slowest loop, to find where a press is lost), `usb` (bus suspend/resume/wake counters),
 `ledtest`, `ledprobe`, `huesweep` (labelled on the screens; they block the main loop ~30-45 s), `wipe`, `reset`.
 
 ## 9. Testing

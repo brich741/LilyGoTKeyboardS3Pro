@@ -144,7 +144,8 @@ function validateConfig(c) {
     all.forEach(([k, w]) => {
       if (!k || typeof k !== 'object') return err(`${w}: missing`);
       if (k.idle) { checkIcon(k.idle.icon, w + ' idle'); checkColor(k.idle.color, w + ' idle'); }
-      for (const g of ['single', 'double']) {
+      if (k.toggle && !k.single) err(`${w}: toggle needs a single press (the first press)`);
+      for (const g of ['single', 'double', 'toggle']) {
         if (!k[g]) continue;
         validateSteps(k[g].steps, `${w} ${g}`, err);
         checkIcon(k[g].icon, `${w} ${g}`); checkColor(k[g].color, `${w} ${g}`); checkMs(k[g].ms, `${w} ${g}`);
@@ -530,7 +531,7 @@ function viewKeys() {
     h('button', { type: 'button', class: 'btn', 'aria-label': 'Move page right', disabled: state.pageIdx === cfg.pages.length - 1, onClick: () => movePage(1), text: '▶' }),
     h('button', { type: 'button', class: 'btn danger', disabled: cfg.pages.length <= 1, onClick: deletePage, text: 'Delete' })));
 
-  const badges = k => h('span', { class: 'badges' }, [k.single && 'S', k.double && 'D', k.hold && 'H'].filter(Boolean).map(t => h('i', { text: t })));
+  const badges = k => h('span', { class: 'badges' }, [k.single && 'S', k.double && 'D', k.toggle && 'T', k.hold && 'H'].filter(Boolean).map(t => h('i', { text: t })));
   root.append(h('div', { class: 'tiles' }, pg.keys.map((k, i) => {
     const led = h('span', { class: 'led' });
     if (k.idle.color) led.style.background = k.idle.color;
@@ -540,7 +541,7 @@ function viewKeys() {
   root.append(h('div', { class: 'enc-wrap' },
     h('button', { type: 'button', class: 'enc-tile', 'aria-label': 'Edit encoder push button', onClick: () => openSheet('enc') },
       h('span', { text: 'Encoder' }), h('span', { class: 'muted small', text: 'push' }), badges(pg.encoder))));
-  root.append(h('p', { class: 'muted small', text: 'Tap a key to edit it. S = single, D = double, H = hold.' }));
+  root.append(h('p', { class: 'muted small', text: 'Tap a key to edit it. S = single, D = double, T = toggle, H = hold.' }));
 
   // page settings
   const nameInp = textField('Page name (1-15 characters)', pg.name, v => { pg.name = v; }, { max: 15, after: refreshTabs });
@@ -582,7 +583,7 @@ async function showOnDevice() {
 }
 
 /* ---- bottom sheet key editor ---- */
-const TABS = [['idle', 'Idle'], ['single', 'Single'], ['double', 'Double'], ['hold', 'Hold']];
+const TABS = [['idle', 'Idle'], ['single', 'Single'], ['double', 'Double'], ['toggle', 'Toggle'], ['hold', 'Hold']];
 function openSheet(keyId) {
   state.editing = { key: keyId, tab: keyId === 'enc' ? 'single' : 'idle', fresh: true };
   renderSheet();
@@ -645,15 +646,23 @@ function enableToggle(key, name, label, make, rerender) {
 }
 
 function gestureEditor(key, name, enc, rerender) {
-  const label = name === 'single' ? 'Enable single press' : 'Enable double press';
+  const label = { single: 'Enable single press', double: 'Enable double press', toggle: 'Enable toggle (alternate presses)' }[name];
   const root = h('div', null, enableToggle(key, name, label, () => ({ steps: [] }), rerender));
+  if (name === 'toggle') {
+    if (!key.single && !key.toggle) { root.replaceChildren(h('p', { class: 'hint', text: 'Set up the Single press first: it is what the first press sends.' })); return root; }
+    root.append(h('div', { class: 'notice info' },
+      'Presses alternate. The 1st press sends the Single steps and shows the Single icon; the 2nd press sends these Toggle steps and shows the icon below (or goes back to the idle icon). Both icons stay until the next press. A page switch resets to the 1st state.'));
+  }
+  if (name === 'single' && key.toggle) root.append(h('p', { class: 'hint', text: 'Toggle is on: this is the 1st press (the "on" state). Its icon stays until the next press.' }));
   if (name === 'single' && key.double) root.append(h('p', { class: 'hint', text: 'Because a double press exists, a single press waits for the double-press window before firing.' }));
   const g = key[name];
   if (!g) return root;
   root.append(h('h3', { text: 'Steps' }), stepList(g.steps, rerender));
   if (!enc) {
-    root.append(visualBlock(g, rerender, 'Icon while active', 'Keep idle icon', 'Override LED color'));
+    const t = name === 'toggle';
+    root.append(visualBlock(g, rerender, t ? 'Icon after this press' : 'Icon while active', 'Keep idle icon', t ? 'LED color after this press' : 'Override LED color'));
   }
+  if (name === 'toggle' || (name === 'single' && key.toggle)) return root;   // toggle looks stay until the next press
   root.append(msControl('Show for', g, rerender));
   return root;
 }

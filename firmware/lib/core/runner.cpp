@@ -6,7 +6,7 @@ namespace core {
 
 namespace {
 constexpr uint8_t kModFlags[] = {MOD_CTRL, MOD_SHIFT, MOD_ALT, MOD_GUI};
-constexpr uint32_t kTapMs = 10;
+constexpr uint32_t kTapGapMs = 10;   // pause after a tap, before the next step
 }  // namespace
 
 void StepRunner::press(uint8_t usage) {
@@ -44,11 +44,11 @@ void StepRunner::runStep(const Step& s) {
           for (uint8_t f : kModFlags)
             if (s.mods & f) press(modUsage(f));
           press(s.key);
-          sink_.sleepMs(kTapMs);
+          sink_.sleepMs(tapMs_);
           release(s.key);
           for (int i = 3; i >= 0; --i)
             if (s.mods & kModFlags[i]) release(modUsage(kModFlags[i]));
-          sink_.sleepMs(kTapMs);
+          sink_.sleepMs(kTapGapMs);
           break;
         case Step::Down:
           for (uint8_t f : kModFlags)

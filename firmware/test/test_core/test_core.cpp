@@ -155,7 +155,8 @@ struct Rec : HidSink {
   void typeChar(char c) override { log.push_back(std::string("t") + c); }
   void mediaPress(uint16_t u) override { log.push_back("m" + std::to_string(u)); }
   void mediaRelease() override { log.push_back("mr"); }
-  void sleepMs(uint32_t) override {}
+  std::vector<uint32_t> sleeps;
+  void sleepMs(uint32_t ms) override { sleeps.push_back(ms); }
 };
 
 static Step keyStep(Step::Mode m, uint8_t mods, const char* key) {
@@ -174,6 +175,34 @@ void test_runner_tap_order() {
   std::vector<std::string> want = {"d224", "d225", "d19", "u19", "u225", "u224"};
   TEST_ASSERT_TRUE(r.log == want);
   TEST_ASSERT_EQUAL(0, run.heldCount());
+}
+
+void test_runner_tap_holds_for_tapMs() {
+  Rec r;
+  StepRunner run(r);
+  run.run({keyStep(Step::Tap, MOD_CTRL | MOD_GUI, "")});   // modifier-only combo (e.g. a dictation hotkey)
+  TEST_ASSERT_EQUAL_UINT32(60, r.sleeps[0]);              // default: held 60 ms between down and up
+  Rec r2;
+  StepRunner run2(r2);
+  run2.setTapMs(120);
+  run2.run({keyStep(Step::Tap, MOD_CTRL, "")});
+  TEST_ASSERT_EQUAL_UINT32(120, r2.sleeps[0]);
+  TEST_ASSERT_TRUE((r2.log == std::vector<std::string>{"d224", "u224"}));
+}
+
+void test_config_tapMs_default_and_clamp() {
+  Config c = defaultConfig();
+  TEST_ASSERT_EQUAL_UINT16(60, c.settings.tapMs);
+  JsonDocument doc;
+  writeConfig(c, doc);
+  doc["settings"]["tapMs"] = 5;   // below the 10 ms minimum
+  Config back;
+  std::string err;
+  TEST_ASSERT_TRUE(parseConfig(doc.as<JsonVariantConst>(), back, err));
+  TEST_ASSERT_EQUAL_UINT16(10, back.settings.tapMs);
+  doc["settings"].remove("tapMs");   // an old config without the field keeps the default
+  TEST_ASSERT_TRUE(parseConfig(doc.as<JsonVariantConst>(), back, err));
+  TEST_ASSERT_EQUAL_UINT16(60, back.settings.tapMs);
 }
 
 void test_runner_down_up_and_release_all() {
@@ -403,6 +432,41 @@ void test_visual_sticky_after() {
   TEST_ASSERT_EQUAL_STRING("b", v.look().icon.c_str());
 }
 
+void test_visual_toggle_alternates() {
+  KeyCfg k;
+  k.idle.icon = "off";
+  k.single.present = true;
+  k.single.vis.icon = "on";
+  k.toggle.present = true;
+  k.toggle.vis.icon = "off2";
+  KeyVisual v;
+  v.reset(k);
+  TEST_ASSERT_TRUE(&v.onSingle(k, 0, 1500) == &k.single);
+  TEST_ASSERT_EQUAL_STRING("on", v.look().icon.c_str());
+  TEST_ASSERT_FALSE(v.tick(k, 1000000));   // stays until the next press
+  TEST_ASSERT_TRUE(&v.onSingle(k, 10, 1500) == &k.toggle);
+  TEST_ASSERT_EQUAL_STRING("off2", v.look().icon.c_str());
+  TEST_ASSERT_TRUE(&v.onSingle(k, 20, 1500) == &k.single);
+  v.reset(k);                              // page switch / config change -> back to "off"
+  TEST_ASSERT_TRUE(&v.onSingle(k, 30, 1500) == &k.single);
+}
+
+void test_config_toggle_roundtrip() {
+  Config c = defaultConfig();
+  Gesture& t = c.pages[0].keys[1].toggle;
+  t.present = true;
+  t.steps = c.pages[0].keys[2].single.steps;
+  t.vis.icon = "check";
+  JsonDocument doc;
+  writeConfig(c, doc);
+  Config back;
+  std::string err;
+  TEST_ASSERT_TRUE(parseConfig(doc.as<JsonVariantConst>(), back, err));
+  TEST_ASSERT_TRUE(back.pages[0].keys[1].toggle.present);
+  TEST_ASSERT_EQUAL_STRING("check", back.pages[0].keys[1].toggle.vis.icon.c_str());
+  TEST_ASSERT_FALSE(back.pages[0].keys[2].toggle.present);
+}
+
 // ------------------------------------------------------------ leds
 
 void test_led_zone_overlay() {
@@ -518,6 +582,10 @@ int main(int, char**) {
   RUN_TEST(test_visual_hold_and_after);
   RUN_TEST(test_visual_flash_reverts_and_inherits);
   RUN_TEST(test_visual_sticky_after);
+  RUN_TEST(test_runner_tap_holds_for_tapMs);
+  RUN_TEST(test_config_tapMs_default_and_clamp);
+  RUN_TEST(test_visual_toggle_alternates);
+  RUN_TEST(test_config_toggle_roundtrip);
   RUN_TEST(test_led_zone_overlay);
   RUN_TEST(test_plan_paint_groups_and_diffs);
   RUN_TEST(test_hue_is_dropped_but_saturation_and_value_kept);

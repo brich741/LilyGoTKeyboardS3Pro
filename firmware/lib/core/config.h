@@ -52,6 +52,7 @@ struct HoldGesture {
 struct KeyCfg {
   Visual idle;
   Gesture single, dbl;
+  Gesture toggle;         // present = single presses alternate: `single` (-> "on") then `toggle` (-> back "off")
   HoldGesture hold;
 };
 
@@ -83,6 +84,7 @@ struct Settings {
   uint16_t doubleMs = 250;
   uint16_t holdMs = 400;
   uint16_t revertMs = 1500;
+  uint16_t tapMs = 60;           // how long a "tap" key step holds the key down (some apps miss shorter presses)
   uint8_t activePage = 0;
   bool wifiAtBoot = false;       // start the access point at power-up (default OFF; the knob switches it per session)
   bool ledHue = true;            // real LED colours (needs LilyGo's fixed V2 STM32 firmware); false = white/pink only
